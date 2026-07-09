@@ -1,0 +1,9 @@
+<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+  <path
+    fill-rule="evenodd"
+    fill="currentColor"
+    d="M50 4 C25 4 8 21 8 43 C8 70 50 116 50 116 C50 116 92 70 92 43 C92 21 75 4 50 4 Z
+       M40 22 H60 V74 H40 Z
+       M24 38 H76 V58 H24 Z"
+  />
+</svg>
