@@ -1,3 +1,5 @@
+import { withCorsProxyIfNeeded } from './corsProxy'
+
 export class SourceFetchError extends Error {
   constructor(public sourceLabel: string, message: string) {
     super(message)
@@ -15,7 +17,7 @@ export async function fetchWithRetry(
   let lastErr: unknown
   for (let i = 0; i < attempts; i++) {
     try {
-      const res = await fetch(url, init)
+      const res = await fetch(withCorsProxyIfNeeded(url), init)
       if (!res.ok) {
         throw new Error(`HTTP ${res.status} ${res.statusText}`)
       }
