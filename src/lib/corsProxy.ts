@@ -1,18 +1,20 @@
 /**
- * data.cms.gov's Provider Data Catalog API does not send an
- * Access-Control-Allow-Origin header, so browsers refuse to read its
- * responses cross-origin — confirmed in production, not a parsing bug.
- * There is no client-only workaround for a missing CORS header, so GET
- * requests to this host are relayed through a dedicated Cloudflare Worker
- * that adds the header (see cloudflare-worker/cms-proxy.js). A public
- * relay (api.allorigins.win) was tried first but proved unreliable
+ * Two of this app's government data sources don't send an
+ * Access-Control-Allow-Origin header, so browsers refuse to read their
+ * responses cross-origin — confirmed in production, not a parsing bug:
+ *  - data.cms.gov (Provider Data Catalog: SNF/hospital rosters, bed counts)
+ *  - geocoding.geo.census.gov (batch geocoder, used for the hospital roster)
+ * There is no client-only workaround for a missing CORS header, so GET and
+ * POST requests to these hosts are relayed through a dedicated Cloudflare
+ * Worker that adds the header (see cloudflare-worker/cors-proxy.js). A
+ * public relay (api.allorigins.win) was tried first but proved unreliable
  * (intermittent CORS failures and timeouts of its own).
  *
  * Override with VITE_CMS_PROXY_BASE to point at a different proxy — it
- * should accept `?url=<encoded target>` and return the target's body with
- * CORS headers added.
+ * should accept `?url=<encoded target>`, forward the method/body, and
+ * return the target's response with CORS headers added.
  */
-const PROXIED_HOSTS = ['data.cms.gov']
+const PROXIED_HOSTS = ['data.cms.gov', 'geocoding.geo.census.gov']
 
 const PROXY_BASE =
   (import.meta.env.VITE_CMS_PROXY_BASE as string | undefined) ||
