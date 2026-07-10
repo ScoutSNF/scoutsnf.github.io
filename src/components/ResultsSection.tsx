@@ -71,7 +71,7 @@ export function ResultsSection({
         <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">None within this radius</p>
       ) : (
         <>
-          <div className="grid grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] items-center gap-1.5 border-b border-slate-100 px-2 py-1.5 dark:border-slate-800 sm:gap-3 sm:px-3">
+          <div className="grid grid-cols-[1.5rem_minmax(0,1fr)_2.1rem_1.6rem_2.9rem_2.9rem_1rem] items-center gap-1 border-b border-slate-100 px-1.5 py-1.5 dark:border-slate-800 sm:grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] sm:gap-3 sm:px-3">
             <span />
             {sortBtn('name', 'Name')}
             {sortBtn('distance', 'Dist.', 'text-right')}
