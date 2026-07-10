@@ -67,7 +67,9 @@ export default function App() {
     setLoading(true)
     setErrors([])
     setLoadStage('Loading SNF roster…')
-    const snfResult = await loadSnfData(forceRefresh)
+    const snfResult = await loadSnfData(forceRefresh, (stage, done, total) => {
+      setLoadStage(stage === 'collisions' ? `Verifying SNF coordinates… ${done}/${total}` : 'Loading SNF roster…')
+    })
     setSnfs(snfResult.records)
     setSnfFetchedAt(snfResult.fetchedAt)
     if (snfResult.error) setErrors((e) => [...e, snfResult.error!])

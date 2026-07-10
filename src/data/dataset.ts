@@ -15,7 +15,67 @@ export interface LoadResult<T> {
 const SNF_META_KEY = 'snf'
 const HOSPITAL_META_KEY = 'hospital'
 
-export async function loadSnfData(forceRefresh = false): Promise<LoadResult<SnfRecord>> {
+/**
+ * CMS's own coordinates for a meaningful subset of SNFs turn out to be identical
+ * to another, unrelated facility's coordinates (apparent ZIP-centroid fallback in
+ * CMS's geocoding rather than a true street-level match — confirmed in production:
+ * two different Jamaica, NY facilities both came back as 40.7157,-73.794). Trusting
+ * these blindly produces nonsense "0.00 mi apart" results between distinct
+ * buildings. Detect any SNFs sharing an exact coordinate with another SNF and
+ * re-geocode just that subset via the same Census pipeline used for hospitals,
+ * rather than re-geocoding the whole (much larger) SNF roster every time.
+ */
+function findCoordinateCollisions(records: SnfRecord[]): SnfRecord[] {
+  const groups = new Map<string, SnfRecord[]>()
+  for (const r of records) {
+    if (r.latitude == null || r.longitude == null) continue
+    const key = `${r.latitude.toFixed(4)},${r.longitude.toFixed(4)}`
+    const group = groups.get(key)
+    if (group) group.push(r)
+    else groups.set(key, [r])
+  }
+  const collided: SnfRecord[] = []
+  for (const group of groups.values()) {
+    if (group.length > 1) collided.push(...group)
+  }
+  return collided
+}
+
+async function fixCoordinateCollisions(
+  records: SnfRecord[],
+  onProgress?: (done: number, total: number) => void
+): Promise<void> {
+  const collided = findCoordinateCollisions(records)
+  if (collided.length === 0) return
+
+  const inputs: GeocodeInput[] = collided.map((r) => ({
+    id: r.ccn,
+    address: r.address,
+    city: r.city,
+    state: r.state,
+    zip: r.zip
+  }))
+  const geocoded = await geocodeBatch(inputs, onProgress)
+  const misses = inputs.filter((i) => !geocoded.has(i.id))
+  for (const miss of misses) {
+    const result = await geocodeSingleNominatim(miss)
+    if (result) geocoded.set(miss.id, result)
+  }
+
+  const byCcn = new Map(records.map((r) => [r.ccn, r]))
+  for (const [ccn, geo] of geocoded) {
+    const r = byCcn.get(ccn)
+    if (r) {
+      r.latitude = geo.latitude
+      r.longitude = geo.longitude
+    }
+  }
+}
+
+export async function loadSnfData(
+  forceRefresh = false,
+  onProgress?: (stage: string, done: number, total: number) => void
+): Promise<LoadResult<SnfRecord>> {
   const meta = await getMeta(SNF_META_KEY)
   const cached = await db.snf.toArray()
 
@@ -26,6 +86,9 @@ export async function loadSnfData(forceRefresh = false): Promise<LoadResult<SnfR
   try {
     const fresh = await fetchSnfRecords()
     if (fresh.length === 0) throw new Error('empty response')
+
+    await fixCoordinateCollisions(fresh, (done, total) => onProgress?.('collisions', done, total))
+
     await db.transaction('rw', db.snf, db.meta, async () => {
       await db.snf.clear()
       await db.snf.bulkPut(fresh)
