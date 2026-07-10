@@ -54,7 +54,7 @@ export function DealBoard({
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
+    <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Deal Board</h1>
         <div className="flex gap-2">
