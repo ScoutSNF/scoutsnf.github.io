@@ -18,6 +18,7 @@ import { ResultsSection } from './components/ResultsSection'
 import { MapView } from './components/MapView'
 import { DealBoard } from './components/DealBoard'
 import { ExportBar } from './components/ExportBar'
+import { SettingsMenu } from './components/SettingsMenu'
 
 const HOSPITAL_TYPES: HospitalType[] = [
   'Acute Care',
@@ -188,12 +189,11 @@ export default function App() {
               </button>
             </nav>
           </div>
-          <button
-            onClick={() => void loadAll(true)}
-            className="rounded-lg border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
-          >
-            Refresh data
-          </button>
+          <SettingsMenu
+            snfFetchedAt={snfFetchedAt}
+            hospitalFetchedAt={hospitalFetchedAt}
+            onRefresh={() => void loadAll(true)}
+          />
         </div>
         {errors.length > 0 && (
           <div className="mx-auto max-w-3xl px-4 pb-2">
