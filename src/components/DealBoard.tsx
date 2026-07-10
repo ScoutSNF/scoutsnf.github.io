@@ -57,6 +57,12 @@ export function DealBoard({
     setNewPortfolioOpen(false)
   }
 
+  const assignedFacilityIds = new Set<string>()
+  for (const ids of memberIdsByPortfolio.values()) {
+    for (const id of ids) assignedFacilityIds.add(id)
+  }
+  const unfiledSaved = saved.filter((row) => !assignedFacilityIds.has(row.id))
+
   function exportBoard() {
     const rows = saved.map((row) => {
       const facility = resolve(row)
@@ -161,13 +167,23 @@ export function DealBoard({
         <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
           No saved deals yet. Search for a facility and tap the star to save it here.
         </p>
+      ) : unfiledSaved.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          All saved facilities are filed into a portfolio — open one above to view them, or remove a facility from its
+          portfolio to bring it back here.
+        </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {saved.map((row, i) => {
+          {assignedFacilityIds.size > 0 && (
+            <p className="text-xs text-slate-400">
+              {assignedFacilityIds.size} saved facilit{assignedFacilityIds.size === 1 ? 'y is' : 'ies are'} filed into a
+              portfolio and hidden here — view them from Portfolios above.
+            </p>
+          )}
+          {unfiledSaved.map((row, i) => {
             const facility = resolve(row)
             const occ = facility ? getOccupancyDisplay(facility) : null
             const metricsAsOf = row.kind === 'snf' ? snfFetchedAt : hospitalFetchedAt
-            const memberOf = portfolios.filter((p) => memberIdsByPortfolio.get(p.id)?.has(row.id))
             return (
               <div key={row.id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex items-start justify-between gap-2">
@@ -183,7 +199,7 @@ export function DealBoard({
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <div className="flex gap-1">
                       <button onClick={() => onMove(row, -1)} disabled={i === 0} className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200">▲</button>
-                      <button onClick={() => onMove(row, 1)} disabled={i === saved.length - 1} className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200">▼</button>
+                      <button onClick={() => onMove(row, 1)} disabled={i === unfiledSaved.length - 1} className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200">▼</button>
                       <button onClick={() => onRemove(row)} className="text-slate-400 hover:text-red-500">✕</button>
                     </div>
                   </div>
@@ -214,7 +230,7 @@ export function DealBoard({
                       onClick={() => setAssignOpenFor(assignOpenFor === row.id ? null : row.id)}
                       className="text-xs text-brand hover:underline"
                     >
-                      {memberOf.length > 0 ? `In ${memberOf.map((p) => p.name).join(', ')}` : 'Add to portfolio…'}
+                      Add to portfolio…
                     </button>
                     {assignOpenFor === row.id && (
                       <div className="mt-1.5 flex flex-wrap gap-1.5">

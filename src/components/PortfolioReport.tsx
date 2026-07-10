@@ -14,11 +14,13 @@ function memberId(m: PortfolioReportData['members'][number]): string {
 export function PortfolioReport({
   portfolio,
   data,
-  onClose
+  onClose,
+  onRemoveMember
 }: {
   portfolio: Portfolio
   data: PortfolioReportData
   onClose: () => void
+  onRemoveMember: (facilityId: string) => void
 }) {
   const [tab, setTab] = useState<'list' | 'map'>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -170,6 +172,13 @@ export function PortfolioReport({
                       <span>{getBedsDisplay(m.facility)} beds</span>
                       <span>{occ.text} occ</span>
                       <StarRating rating={m.facility.overallRating} />
+                      <button
+                        onClick={() => onRemoveMember(memberId(m))}
+                        className="text-slate-400 hover:text-red-500"
+                        title="Remove from portfolio (returns it to ScoutBoard)"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 )

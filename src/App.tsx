@@ -275,6 +275,7 @@ export default function App() {
             portfolio={viewingPortfolio}
             data={portfolioReportData}
             onClose={() => setViewingPortfolioId(null)}
+            onRemoveMember={(facilityId) => handleToggleMember(viewingPortfolio.id, facilityId, false)}
           />
         ) : (
           <DealBoard
