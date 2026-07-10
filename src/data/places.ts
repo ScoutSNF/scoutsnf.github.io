@@ -1,5 +1,4 @@
 import { db } from './db'
-import { lookupWikipediaPhoto } from './wikipedia'
 
 const PLACES_KEY = import.meta.env.VITE_GOOGLE_PLACES_KEY as string | undefined
 
@@ -60,10 +59,12 @@ async function lookupViaGooglePlaces(name: string, city: string, state: string):
 }
 
 /**
- * Looks up a cover photo (and website, if the optional paid Google Places key is
- * configured) for a facility. Cached in IndexedDB by CCN so each facility is only
- * ever looked up once per browser. Prefers Google Places (real facility photo)
- * when available, otherwise tries Wikipedia (free, no key) before giving up.
+ * Looks up a cover photo and website via the optional paid Google Places key.
+ * Cached in IndexedDB by CCN so each facility is only ever looked up once per
+ * browser. Without a configured key (the default), returns nulls and the UI
+ * falls back to the initials avatar rather than risk showing a mismatched photo
+ * (Wikipedia's free lookup was previously used as a fallback here but was
+ * unreliable — a search match doesn't reliably mean the same facility).
  */
 export async function lookupPlaceInfo(
   ccn: string,
@@ -72,16 +73,15 @@ export async function lookupPlaceInfo(
   state: string
 ): Promise<PlaceInfo | null> {
   const cached = await db.places.get(ccn)
-  if (cached) return { website: cached.website, photoUrl: cached.photoUrl }
+  // A cached photo without a Places key configured must be a stale result from the
+  // now-removed Wikipedia fallback — don't trust it, re-resolve instead of showing it.
+  if (cached && (PLACES_KEY || cached.photoUrl == null)) {
+    return { website: cached.website, photoUrl: cached.photoUrl }
+  }
 
-  let result: PlaceInfo | null = null
-  if (PLACES_KEY) {
-    result = await lookupViaGooglePlaces(name, city, state)
-  }
-  if (!result?.photoUrl) {
-    const wikiPhoto = await lookupWikipediaPhoto(name, city, state)
-    result = { website: result?.website ?? null, photoUrl: wikiPhoto }
-  }
+  const result: PlaceInfo = PLACES_KEY
+    ? (await lookupViaGooglePlaces(name, city, state)) ?? { website: null, photoUrl: null }
+    : { website: null, photoUrl: null }
 
   await db.places.put({ ccn, website: result.website, photoUrl: result.photoUrl, fetchedAt: new Date().toISOString() })
   return result
