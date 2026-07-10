@@ -32,7 +32,7 @@ export function MapView({
   anchor: FacilityRecord
   radiusMiles: number
   results: FacilityWithDistance<FacilityRecord>[]
-  onSelect: (facility: FacilityRecord) => void
+  onSelect: (facility: FacilityRecord, distanceMiles: number) => void
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -76,12 +76,13 @@ export function MapView({
       const marker = L.marker([facility.latitude, facility.longitude], {
         icon: ICONS[facility.kind]
       }).addTo(layer)
+      const typeLabel = facility.kind === 'hospital' ? facility.hospitalType : ''
       const popupDiv = document.createElement('div')
-      popupDiv.innerHTML = `<strong>${facility.name}</strong><br/>${distanceMiles.toFixed(1)} mi · ${facility.kind === 'snf' ? 'SNF' : 'Hospital'}<br/>`
+      popupDiv.innerHTML = `<strong>${facility.name}</strong><br/>${distanceMiles.toFixed(1)} mi${typeLabel ? ' · ' + typeLabel : ''}<br/>`
       const btn = document.createElement('button')
       btn.textContent = 'View details'
       btn.style.cssText = 'color:#0f4c5c;text-decoration:underline;font-size:12px;background:none;border:none;padding:0;cursor:pointer'
-      btn.onclick = () => onSelect(facility)
+      btn.onclick = () => onSelect(facility, distanceMiles)
       popupDiv.appendChild(btn)
       marker.bindPopup(popupDiv)
     }

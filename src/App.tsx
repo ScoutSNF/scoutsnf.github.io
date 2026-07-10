@@ -19,6 +19,7 @@ import { MapView } from './components/MapView'
 import { DealBoard } from './components/DealBoard'
 import { ExportBar } from './components/ExportBar'
 import { SettingsMenu } from './components/SettingsMenu'
+import { CompareCard } from './components/CompareCard'
 
 const HOSPITAL_TYPES: HospitalType[] = [
   'Acute Care',
@@ -52,6 +53,7 @@ export default function App() {
   const [tab, setTab] = useState<'list' | 'map'>('list')
   const [facilityTab, setFacilityTab] = useState<'snf' | 'hospital'>('snf')
   const [mapFilter, setMapFilter] = useState<'all' | 'snf' | 'hospital'>('all')
+  const [compareFacility, setCompareFacility] = useState<{ facility: FacilityRecord; distanceMiles: number } | null>(null)
   const [hospitalTypeFilter, setHospitalTypeFilter] = useState<Set<HospitalType>>(new Set(HOSPITAL_TYPES))
   const [occupancyByPk, setOccupancyByPk] = useState<Map<string, { occupancyPct: number | null; asOfWeek: string | null }>>(
     new Map()
@@ -91,6 +93,10 @@ export default function App() {
     setView(saved.length > 0 ? 'board' : 'search')
     setInitialViewSet(true)
   }, [loading, saved, initialViewSet])
+
+  useEffect(() => {
+    setCompareFacility(null)
+  }, [anchor])
 
   const snfResults = useMemo(() => {
     if (!anchor || anchor.latitude == null || anchor.longitude == null) return []
@@ -328,8 +334,24 @@ export default function App() {
                     )}
 
                     <div className="h-[500px]">
-                      <MapView anchor={anchor} radiusMiles={radiusMiles} results={mapResults} onSelect={setAnchor} />
+                      <MapView
+                        anchor={anchor}
+                        radiusMiles={radiusMiles}
+                        results={mapResults}
+                        onSelect={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
+                      />
                     </div>
+
+                    {compareFacility && (
+                      <CompareCard
+                        anchor={anchor}
+                        facility={compareFacility.facility}
+                        distanceMiles={compareFacility.distanceMiles}
+                        savedIds={savedIds}
+                        onToggleSave={toggleSave}
+                        onClose={() => setCompareFacility(null)}
+                      />
+                    )}
                   </>
                 ) : (
                   <p className="text-sm text-slate-500">Anchor location unavailable — map view needs coordinates.</p>
