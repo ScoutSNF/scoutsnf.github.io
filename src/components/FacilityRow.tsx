@@ -59,7 +59,10 @@ export function FacilityRow({
             </span>
           )}
         </span>
-        <span className="flex justify-end text-[10px] sm:text-sm">
+        <span className="flex justify-end overflow-hidden text-xs tabular-nums sm:hidden">
+          {facility.overallRating != null ? `${facility.overallRating.toFixed(1)}★` : '—'}
+        </span>
+        <span className="hidden sm:flex sm:justify-end">
           <StarRating rating={facility.overallRating} />
         </span>
         <button

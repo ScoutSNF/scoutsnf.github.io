@@ -7,10 +7,16 @@ export interface OccupancyDisplay {
   historical: boolean
 }
 
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  if (Number.isNaN(d.getTime())) return dateStr
+  return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
+}
+
 function formatWeekOf(dateStr: string): string {
   const d = new Date(dateStr)
   if (Number.isNaN(d.getTime())) return dateStr
-  return `wk of ${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
+  return `wk of ${formatShortDate(dateStr)}`
 }
 
 export function getOccupancyDisplay(facility: FacilityRecord): OccupancyDisplay {
@@ -19,7 +25,7 @@ export function getOccupancyDisplay(facility: FacilityRecord): OccupancyDisplay 
     const capped = facility.occupancyPct > 100 ? '100%+' : `${facility.occupancyPct}%`
     return {
       text: capped,
-      asOfLabel: facility.processingDate ? `as of ${facility.processingDate}` : null,
+      asOfLabel: facility.processingDate ? `as of ${formatShortDate(facility.processingDate)}` : null,
       historical: false
     }
   }
