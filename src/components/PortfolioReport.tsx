@@ -3,7 +3,7 @@ import type { PortfolioReportData } from '../lib/portfolioReport'
 import type { FacilityRecord, Portfolio } from '../types/facility'
 import { StarRating } from './StarRating'
 import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
-import { rowsToCsv, downloadCsv } from '../lib/exportCsv'
+import { rowsToCsv, downloadCsv, type CsvRow } from '../lib/exportCsv'
 import { PortfolioMap } from './PortfolioMap'
 import { ResultsSection } from './ResultsSection'
 
@@ -37,28 +37,88 @@ export function PortfolioReport({
 
   const selectedMember = data.members.find((m) => memberId(m) === selectedId) ?? null
   const selectedCompetitors = selectedId ? data.competitorsByMemberId.get(selectedId) ?? [] : []
-  function exportReport() {
-    const distanceRows = data.distances.map((d) => ({
-      'Facility A': d.a.row.name,
-      'Facility B': d.b.row.name,
-      'Distance (mi)': d.distanceMiles
-    }))
-    const sharedRows = data.sharedCompetitors.map((c) => ({
+
+  function buildReport(): string {
+    const sections: string[] = [
+      `Portfolio report: ${portfolio.name}`,
+      `Generated: ${new Date().toLocaleString()}`,
+      `Facilities: ${data.members.length}${data.statesCovered.length > 0 ? ` · States: ${data.statesCovered.join(', ')}` : ''}`
+    ]
+
+    const facilityRows: CsvRow[] = data.members.map((m) => {
+      const occ = getOccupancyDisplay(m.facility)
+      return {
+        Name: m.row.name,
+        City: m.row.city,
+        State: m.row.state,
+        Beds: getBedsDisplay(m.facility),
+        Occupancy: occ.text,
+        Rating: m.facility.overallRating ?? '',
+        'Saved Radius (mi)': m.row.radiusMiles
+      }
+    })
+    sections.push(
+      '',
+      'FACILITIES IN THIS PORTFOLIO',
+      rowsToCsv(['Name', 'City', 'State', 'Beds', 'Occupancy', 'Rating', 'Saved Radius (mi)'], facilityRows)
+    )
+
+    if (data.distances.length > 0) {
+      const distanceRows: CsvRow[] = data.distances.map((d) => ({
+        'Facility A': d.a.row.name,
+        'Facility B': d.b.row.name,
+        'Distance (mi)': d.distanceMiles
+      }))
+      sections.push(
+        '',
+        'DISTANCE BETWEEN YOUR FACILITIES',
+        rowsToCsv(['Facility A', 'Facility B', 'Distance (mi)'], distanceRows)
+      )
+    }
+
+    for (const m of data.members) {
+      const id = memberId(m)
+      const competitors = data.competitorsByMemberId.get(id) ?? []
+      const competitorRows: CsvRow[] = competitors.map((c) => {
+        const occ = getOccupancyDisplay(c.facility)
+        return {
+          Name: c.facility.name,
+          City: c.facility.city,
+          State: c.facility.state,
+          'Distance (mi)': c.distanceMiles,
+          Beds: getBedsDisplay(c.facility),
+          Occupancy: occ.text,
+          Rating: c.facility.overallRating ?? ''
+        }
+      })
+      sections.push(
+        '',
+        `COMPETITORS NEAR ${m.row.name.toUpperCase()} (within ${m.row.radiusMiles} mi)`,
+        competitorRows.length > 0
+          ? rowsToCsv(['Name', 'City', 'State', 'Distance (mi)', 'Beds', 'Occupancy', 'Rating'], competitorRows)
+          : 'No competing SNFs within this radius.'
+      )
+    }
+
+    const sharedRows: CsvRow[] = data.sharedCompetitors.map((c) => ({
       Competitor: c.facility.name,
       City: c.facility.city,
       State: c.facility.state,
       'Near your facilities': c.near.map((n) => `${n.member.row.name} (${n.distanceMiles} mi)`).join(' | ')
     }))
-    const csv = [
-      `Portfolio: ${portfolio.name}`,
+    sections.push(
       '',
-      'Distances between your facilities',
-      rowsToCsv(['Facility A', 'Facility B', 'Distance (mi)'], distanceRows),
-      '',
-      'Competitors near 2+ of your facilities',
-      rowsToCsv(['Competitor', 'City', 'State', 'Near your facilities'], sharedRows)
-    ].join('\n')
-    downloadCsv(`${portfolio.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-report.csv`, csv)
+      `COMPETITORS SHARED BY 2+ OF YOUR FACILITIES (${data.uniqueCompetitorCount} unique competitors total across the portfolio)`,
+      sharedRows.length > 0
+        ? rowsToCsv(['Competitor', 'City', 'State', 'Near your facilities'], sharedRows)
+        : 'No competitors currently fall within range of more than one of your facilities.'
+    )
+
+    return sections.join('\n')
+  }
+
+  function exportReport() {
+    downloadCsv(`${portfolio.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-report.csv`, buildReport())
   }
 
   return (
@@ -76,9 +136,9 @@ export function PortfolioReport({
         </div>
         <button
           onClick={exportReport}
-          className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+          className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm text-white hover:opacity-90"
         >
-          Export CSV
+          Download report (CSV)
         </button>
       </div>
 

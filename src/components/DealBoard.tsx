@@ -146,7 +146,7 @@ export function DealBoard({
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <button onClick={() => onViewReport(p.id)} className="text-sm text-brand hover:underline">
-                      View report
+                      View portfolio
                     </button>
                     <button
                       onClick={() => onDeletePortfolio(p.id)}
