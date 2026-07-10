@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { FacilityRecord } from '../types/facility'
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
+import { BookmarkIcon } from './BookmarkIcon'
 import { getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
 
 export function AnchorCard({
@@ -39,7 +40,7 @@ export function AnchorCard({
           className={`text-2xl ${saved ? 'text-gold' : 'text-slate-300 hover:text-gold'}`}
           title={saved ? 'Remove from Deal Board' : 'Save to Deal Board'}
         >
-          {saved ? '★' : '☆'}
+          <BookmarkIcon filled={saved} />
         </button>
       </div>
 

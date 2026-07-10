@@ -3,6 +3,7 @@ import type { FacilityRecord } from '../types/facility'
 import { TypeBadge } from './TypeBadge'
 import { StarRating } from './StarRating'
 import { PlaceholderImage } from './PlaceholderImage'
+import { BookmarkIcon } from './BookmarkIcon'
 import { useLazyPlaceInfo } from '../hooks/useLazyPlaceInfo'
 import { getOccupancyDisplay, getBedsDisplay, googleMapsDirectionsUrl, googleSearchUrl } from '../lib/facilityDisplay'
 
@@ -73,7 +74,7 @@ export function FacilityRow({
           className={`justify-self-end text-base sm:text-lg ${saved ? 'text-gold' : 'text-slate-300 hover:text-gold dark:text-slate-600'}`}
           title={saved ? 'Remove from Deal Board' : 'Save to Deal Board'}
         >
-          {saved ? '★' : '☆'}
+          <BookmarkIcon filled={saved} />
         </button>
       </button>
 
