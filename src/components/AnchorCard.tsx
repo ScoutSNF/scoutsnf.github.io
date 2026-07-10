@@ -7,12 +7,10 @@ import { getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
 
 export function AnchorCard({
   facility,
-  snapshotLine,
   saved,
   onToggleSave
 }: {
   facility: FacilityRecord
-  snapshotLine: string
   saved: boolean
   onToggleSave: () => void
 }) {
@@ -63,8 +61,6 @@ export function AnchorCard({
           {facility.processingDate && <span>Data as of {facility.processingDate}</span>}
         </div>
       )}
-
-      <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium dark:bg-slate-800">{snapshotLine}</p>
     </div>
   )
 }

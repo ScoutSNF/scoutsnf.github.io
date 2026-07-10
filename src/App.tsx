@@ -10,7 +10,7 @@ import {
   reorderSavedFacilities
 } from './data/savedFacilities'
 import type { SavedFacilityRow } from './data/db'
-import { withinRadius, marketSnapshotLine, statesInResults } from './lib/market'
+import { withinRadius, statesInResults } from './lib/market'
 import { SearchBar } from './components/SearchBar'
 import { AnchorCard } from './components/AnchorCard'
 import { RadiusSlider } from './components/RadiusSlider'
@@ -155,7 +155,6 @@ export default function App() {
     return [...snfResults, ...hospitalResults]
   }, [mapFilter, snfResults, hospitalResults])
 
-  const snapshot = useMemo(() => marketSnapshotLine(snfResults, radiusMiles), [snfResults, radiusMiles])
   const savedIds = useMemo(() => new Set(saved.map((s) => s.id)), [saved])
 
   async function toggleSave(facility: FacilityRecord) {
@@ -251,7 +250,6 @@ export default function App() {
             <>
               <AnchorCard
                 facility={anchor}
-                snapshotLine={snapshot}
                 saved={savedIds.has(`${anchor.kind}:${anchor.ccn}`)}
                 onToggleSave={() => toggleSave(anchor)}
               />

@@ -20,26 +20,6 @@ export function withinRadius<T extends FacilityRecord>(
   return results
 }
 
-function average(nums: number[]): number | null {
-  if (nums.length === 0) return null
-  return nums.reduce((a, b) => a + b, 0) / nums.length
-}
-
-export function marketSnapshotLine(snfResults: FacilityWithDistance<SnfRecord>[], radiusMiles: number): string {
-  const n = snfResults.length
-  if (n === 0) return `No competing SNFs within ${radiusMiles} mi`
-  const avgOcc = average(
-    snfResults.map((r) => r.facility.occupancyPct).filter((v): v is number => v != null)
-  )
-  const avgRating = average(
-    snfResults.map((r) => r.facility.overallRating).filter((v): v is number => v != null)
-  )
-  const parts = [`${n} SNF${n === 1 ? '' : 's'} within ${radiusMiles} mi`]
-  if (avgOcc != null) parts.push(`avg occupancy ${Math.round(avgOcc)}%`)
-  if (avgRating != null) parts.push(`avg rating ${avgRating.toFixed(1)}★`)
-  return parts.join(' · ')
-}
-
 export function statesInResults(
   snfResults: FacilityWithDistance<SnfRecord>[],
   hospitalResults: FacilityWithDistance<HospitalRecord>[]
