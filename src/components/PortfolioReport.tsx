@@ -112,8 +112,8 @@ export function PortfolioReport({
               </div>
 
               <p className="text-xs text-slate-400">
-                Gold diamonds are your portfolio's facilities — all of them stay visible regardless of which one is
-                selected. Selecting one draws its search radius and that facility's competitors (blue dots).
+                Gold-ringed pins are your portfolio's facilities — all of them stay visible regardless of which one is
+                selected. Selecting one draws its search radius and that facility's competitors (plain blue dots).
               </p>
 
               <div className="h-[420px]">

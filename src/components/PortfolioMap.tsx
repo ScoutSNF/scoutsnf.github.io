@@ -2,35 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import type { SnfRecord } from '../types/facility'
 import type { PortfolioMemberResolved } from '../lib/portfolioReport'
-
-const COLORS = {
-  member: '#e9c46a',
-  memberSelected: '#0f4c5c',
-  competitor: '#0ea5e9',
-  ring: '#0f4c5c'
-}
-
-/** Diamond marker so portfolio-owned facilities read as distinct from competitor dots at a glance. */
-function memberIcon(selected: boolean): L.DivIcon {
-  const size = selected ? 20 : 15
-  return L.divIcon({
-    className: '',
-    html: `<div style="width:${size}px;height:${size}px;transform:rotate(45deg);background:${
-      selected ? COLORS.memberSelected : COLORS.member
-    };border:2px solid white;box-shadow:0 0 0 2px ${selected ? COLORS.member : COLORS.memberSelected};"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2]
-  })
-}
-
-function competitorIcon(): L.DivIcon {
-  return L.divIcon({
-    className: '',
-    html: `<div style="width:10px;height:10px;border-radius:50%;background:${COLORS.competitor};border:2px solid white;"></div>`,
-    iconSize: [10, 10],
-    iconAnchor: [5, 5]
-  })
-}
+import { MAP_COLORS, dotIcon } from '../lib/mapIcons'
 
 export function PortfolioMap({
   members,
@@ -77,20 +49,22 @@ export function PortfolioMap({
       const radiusMeters = selectedMember.row.radiusMiles * 1609.34
       L.circle([selectedMember.facility.latitude, selectedMember.facility.longitude], {
         radius: radiusMeters,
-        color: COLORS.ring,
+        color: MAP_COLORS.anchor,
         fillOpacity: 0.05,
         weight: 1
       }).addTo(layer)
     }
 
+    // Portfolio-owned facilities always render highlighted (teal + gold ring), same treatment
+    // the search map gives the anchor/compared pin — the selected one just gets a size bump.
     for (const m of members) {
       if (m.facility.latitude == null || m.facility.longitude == null) continue
       const id = `${m.facility.kind}:${m.facility.ccn}`
       const isSelected = id === selectedId
       bounds.push([m.facility.latitude, m.facility.longitude])
       const marker = L.marker([m.facility.latitude, m.facility.longitude], {
-        icon: memberIcon(isSelected),
-        zIndexOffset: 1000
+        icon: dotIcon(MAP_COLORS.anchor, isSelected ? 16 : 12, true),
+        zIndexOffset: isSelected ? 1000 : 500
       }).addTo(layer)
       marker.bindPopup(`<strong>${m.row.name}</strong><br/>Portfolio facility${isSelected ? ' (selected)' : ''}`)
       marker.on('click', () => onSelect(id))
@@ -100,7 +74,7 @@ export function PortfolioMap({
       for (const c of competitors) {
         if (c.facility.latitude == null || c.facility.longitude == null) continue
         bounds.push([c.facility.latitude, c.facility.longitude])
-        L.marker([c.facility.latitude, c.facility.longitude], { icon: competitorIcon() })
+        L.marker([c.facility.latitude, c.facility.longitude], { icon: dotIcon(MAP_COLORS.snf, 12, false) })
           .bindPopup(`<strong>${c.facility.name}</strong><br/>${c.distanceMiles} mi from ${selectedMember.row.name}`)
           .addTo(layer)
       }
