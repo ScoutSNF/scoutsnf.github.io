@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { PortfolioReportData } from '../lib/portfolioReport'
-import type { Portfolio } from '../types/facility'
+import type { FacilityRecord, Portfolio } from '../types/facility'
 import { StarRating } from './StarRating'
-import { TypeBadge } from './TypeBadge'
 import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
 import { rowsToCsv, downloadCsv } from '../lib/exportCsv'
 import { PortfolioMap } from './PortfolioMap'
+import { ResultsSection } from './ResultsSection'
 
 function memberId(m: PortfolioReportData['members'][number]): string {
   return `${m.facility.kind}:${m.facility.ccn}`
@@ -14,11 +14,15 @@ function memberId(m: PortfolioReportData['members'][number]): string {
 export function PortfolioReport({
   portfolio,
   data,
+  savedIds,
+  onToggleSave,
   onClose,
   onRemoveMember
 }: {
   portfolio: Portfolio
   data: PortfolioReportData
+  savedIds: Set<string>
+  onToggleSave: (facility: FacilityRecord, radiusOverride?: number) => void
   onClose: () => void
   onRemoveMember: (facilityId: string) => void
 }) {
@@ -128,27 +132,18 @@ export function PortfolioReport({
               </div>
 
               {selectedMember && (
-                <section className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                  <h2 className="mb-2 text-sm font-semibold">
-                    Competitors near {selectedMember.row.name}{' '}
-                    <span className="font-normal text-slate-400">(within {selectedMember.row.radiusMiles} mi)</span>
-                  </h2>
-                  {selectedCompetitors.length === 0 ? (
-                    <p className="text-sm text-slate-500 dark:text-slate-400">No competing SNFs within this radius.</p>
-                  ) : (
-                    <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
-                      {selectedCompetitors.map((c) => (
-                        <div key={c.facility.ccn} className="flex items-center justify-between gap-2 py-2 text-sm">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <TypeBadge facility={c.facility} />
-                            <span className="truncate">{c.facility.name}</span>
-                          </div>
-                          <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{c.distanceMiles} mi</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                <>
+                  <p className="text-xs text-slate-400">
+                    Within {selectedMember.row.radiusMiles} mi of {selectedMember.row.name} — same sortable list, photos,
+                    and detail as the regular search view.
+                  </p>
+                  <ResultsSection
+                    title={`Competitors near ${selectedMember.row.name}`}
+                    items={selectedCompetitors}
+                    savedIds={savedIds}
+                    onToggleSave={(facility) => onToggleSave(facility, selectedMember.row.radiusMiles)}
+                  />
+                </>
               )}
             </>
           )}

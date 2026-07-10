@@ -183,7 +183,7 @@ export default function App() {
 
   const savedIds = useMemo(() => new Set(saved.map((s) => s.id)), [saved])
 
-  async function toggleSave(facility: FacilityRecord) {
+  async function toggleSave(facility: FacilityRecord, radiusOverride?: number) {
     const id = `${facility.kind}:${facility.ccn}`
     if (savedIds.has(id)) {
       await removeSavedFacility(facility.kind, facility.ccn)
@@ -194,7 +194,7 @@ export default function App() {
         name: facility.name,
         city: facility.city,
         state: facility.state,
-        radiusMiles
+        radiusMiles: radiusOverride ?? radiusMiles
       })
     }
     await refreshSaved()
@@ -274,6 +274,8 @@ export default function App() {
           <PortfolioReport
             portfolio={viewingPortfolio}
             data={portfolioReportData}
+            savedIds={savedIds}
+            onToggleSave={toggleSave}
             onClose={() => setViewingPortfolioId(null)}
             onRemoveMember={(facilityId) => handleToggleMember(viewingPortfolio.id, facilityId, false)}
           />
