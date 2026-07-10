@@ -20,6 +20,7 @@ import { DealBoard } from './components/DealBoard'
 import { ExportBar } from './components/ExportBar'
 import { SettingsMenu } from './components/SettingsMenu'
 import { CompareCard } from './components/CompareCard'
+import { BottomNav } from './components/BottomNav'
 
 const HOSPITAL_TYPES: HospitalType[] = [
   'Acute Care',
@@ -194,21 +195,8 @@ export default function App() {
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
+            <img src={`${import.meta.env.BASE_URL}brand/icon.svg`} alt="" className="h-8 w-8 rounded-lg" />
             <span className="text-lg font-bold">ScoutSNF</span>
-            <nav className="flex gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
-              <button
-                onClick={() => setView('board')}
-                className={`rounded-md px-2 py-1 ${view === 'board' ? 'bg-white shadow dark:bg-slate-700' : ''}`}
-              >
-                Deal Board {saved.length > 0 && `(${saved.length})`}
-              </button>
-              <button
-                onClick={() => setView('search')}
-                className={`rounded-md px-2 py-1 ${view === 'search' ? 'bg-white shadow dark:bg-slate-700' : ''}`}
-              >
-                Search
-              </button>
-            </nav>
           </div>
           <SettingsMenu
             snfFetchedAt={snfFetchedAt}
@@ -256,7 +244,7 @@ export default function App() {
           onGoToSearch={() => setView('search')}
         />
       ) : (
-        <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
+        <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
           <SearchBar snfs={snfs} hospitals={hospitals} onSelect={setAnchor} />
 
           {anchor && (
@@ -435,6 +423,7 @@ export default function App() {
           )}
         </main>
       )}
+      <BottomNav view={view} onChangeView={setView} savedCount={saved.length} />
     </div>
   )
 }
