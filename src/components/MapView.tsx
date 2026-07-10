@@ -62,13 +62,13 @@ export function MapView({
     const isComparing = highlight != null && highlight.latitude != null && highlight.longitude != null
 
     if (isComparing) {
-      L.polyline(
-        [
-          [anchor.latitude, anchor.longitude],
-          [highlight!.latitude!, highlight!.longitude!]
-        ],
-        { color: COLORS.highlightRing, weight: 2, dashArray: '6 4' }
-      ).addTo(layer)
+      const line: L.LatLngExpression[] = [
+        [anchor.latitude, anchor.longitude],
+        [highlight!.latitude!, highlight!.longitude!]
+      ]
+      // Dark casing underneath makes the dashed line legible over light tiles/water/parks alike.
+      L.polyline(line, { color: '#1e293b', weight: 5, opacity: 0.55 }).addTo(layer)
+      L.polyline(line, { color: COLORS.highlightRing, weight: 3, dashArray: '10 6', opacity: 1 }).addTo(layer)
     }
 
     L.marker([anchor.latitude, anchor.longitude], { icon: dotIcon(COLORS.anchor, 16, isComparing) })
