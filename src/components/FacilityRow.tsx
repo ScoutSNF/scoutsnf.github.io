@@ -72,7 +72,7 @@ export function FacilityRow({
             onToggleSave()
           }}
           className={`justify-self-end text-base sm:text-lg ${saved ? 'text-gold' : 'text-slate-300 hover:text-gold dark:text-slate-600'}`}
-          title={saved ? 'Remove from Deal Board' : 'Save to Deal Board'}
+          title={saved ? 'Remove from ScoutBoard' : 'Save to ScoutBoard'}
         >
           <BookmarkIcon filled={saved} />
         </button>

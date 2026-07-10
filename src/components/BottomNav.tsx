@@ -24,6 +24,15 @@ export function BottomNav({
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <button
+        onClick={() => onChangeView('board')}
+        className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs font-medium ${
+          view === 'board' ? 'text-brand' : 'text-slate-400 dark:text-slate-500'
+        }`}
+      >
+        <BookmarkIcon filled={view === 'board'} className="text-lg" />
+        ScoutBoard{savedCount > 0 ? ` (${savedCount})` : ''}
+      </button>
+      <button
         onClick={() => onChangeView('search')}
         className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs font-medium ${
           view === 'search' ? 'text-brand' : 'text-slate-400 dark:text-slate-500'
@@ -31,15 +40,6 @@ export function BottomNav({
       >
         <SearchIcon className="text-lg" />
         Search
-      </button>
-      <button
-        onClick={() => onChangeView('board')}
-        className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs font-medium ${
-          view === 'board' ? 'text-brand' : 'text-slate-400 dark:text-slate-500'
-        }`}
-      >
-        <BookmarkIcon filled={view === 'board'} className="text-lg" />
-        Deal Board{savedCount > 0 ? ` (${savedCount})` : ''}
       </button>
     </nav>
   )

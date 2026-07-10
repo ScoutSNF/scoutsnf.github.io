@@ -34,7 +34,7 @@ function Column({
         <button
           onClick={onToggleSave}
           className={`shrink-0 text-lg ${saved ? 'text-gold' : 'text-slate-300 hover:text-gold'}`}
-          title={saved ? 'Remove from Deal Board' : 'Save to Deal Board'}
+          title={saved ? 'Remove from ScoutBoard' : 'Save to ScoutBoard'}
         >
           <BookmarkIcon filled={saved} />
         </button>

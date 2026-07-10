@@ -50,13 +50,13 @@ export function DealBoard({
       }
     })
     const headers = ['Name', 'City', 'State', 'Type', 'Saved Radius (mi)', 'Beds', 'Occupancy', 'Rating', 'Notes', 'Saved At']
-    downloadCsv('deal-board.csv', rowsToCsv(headers, rows))
+    downloadCsv('scoutboard.csv', rowsToCsv(headers, rows))
   }
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Deal Board</h1>
+        <h1 className="text-xl font-bold">ScoutBoard</h1>
         <div className="flex gap-2">
           <button
             onClick={exportBoard}
