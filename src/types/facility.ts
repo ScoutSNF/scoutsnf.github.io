@@ -85,3 +85,16 @@ export interface DatasetMeta {
   key: string
   fetchedAt: string
 }
+
+export interface Portfolio {
+  id: string
+  name: string
+  createdAt: string
+  order: number
+}
+
+export interface PortfolioMember {
+  id: string // `${portfolioId}:${facilityId}`
+  portfolioId: string
+  facilityId: string // `${kind}:${ccn}`
+}

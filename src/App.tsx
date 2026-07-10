@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord } from './types/facility'
+import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from './types/facility'
 import { loadSnfData, loadHospitalData, recheckSnfCoordinates } from './data/dataset'
 import { loadOccupancyForStates } from './data/occupancy'
 import {
@@ -9,14 +9,23 @@ import {
   updateSavedNotes,
   reorderSavedFacilities
 } from './data/savedFacilities'
+import {
+  listPortfolios,
+  createPortfolio,
+  deletePortfolio,
+  setFacilityInPortfolio,
+  listAllPortfolioMembers
+} from './data/portfolios'
 import type { SavedFacilityRow } from './data/db'
 import { withinRadius, statesInResults } from './lib/market'
+import { resolvePortfolioMembers, buildPortfolioReport } from './lib/portfolioReport'
 import { SearchBar } from './components/SearchBar'
 import { AnchorCard } from './components/AnchorCard'
 import { RadiusSlider } from './components/RadiusSlider'
 import { ResultsSection } from './components/ResultsSection'
 import { MapView } from './components/MapView'
 import { DealBoard } from './components/DealBoard'
+import { PortfolioReport } from './components/PortfolioReport'
 import { ExportBar } from './components/ExportBar'
 import { SettingsMenu } from './components/SettingsMenu'
 import { CompareCard } from './components/CompareCard'
@@ -49,6 +58,10 @@ export default function App() {
   const [view, setView] = useState<View>('search')
   const [initialViewSet, setInitialViewSet] = useState(false)
 
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([])
+  const [memberIdsByPortfolio, setMemberIdsByPortfolio] = useState<Map<string, Set<string>>>(new Map())
+  const [viewingPortfolioId, setViewingPortfolioId] = useState<string | null>(null)
+
   const [anchor, setAnchor] = useState<FacilityRecord | null>(null)
   const [radiusMiles, setRadiusMiles] = useState(10)
   const [tab, setTab] = useState<'list' | 'map'>('list')
@@ -62,6 +75,18 @@ export default function App() {
 
   async function refreshSaved() {
     setSaved(await listSavedFacilities())
+  }
+
+  async function refreshPortfolios() {
+    setPortfolios(await listPortfolios())
+    const members = await listAllPortfolioMembers()
+    const map = new Map<string, Set<string>>()
+    for (const m of members) {
+      const set = map.get(m.portfolioId) ?? new Set<string>()
+      set.add(m.facilityId)
+      map.set(m.portfolioId, set)
+    }
+    setMemberIdsByPortfolio(map)
   }
 
   async function loadAll(forceRefresh = false) {
@@ -95,6 +120,7 @@ export default function App() {
   useEffect(() => {
     void loadAll(false)
     void refreshSaved()
+    void refreshPortfolios()
   }, [])
 
   useEffect(() => {
@@ -180,6 +206,34 @@ export default function App() {
     setView('search')
   }
 
+  async function handleCreatePortfolio(name: string) {
+    await createPortfolio(name)
+    await refreshPortfolios()
+  }
+
+  async function handleDeletePortfolio(id: string) {
+    await deletePortfolio(id)
+    if (viewingPortfolioId === id) setViewingPortfolioId(null)
+    await refreshPortfolios()
+  }
+
+  async function handleToggleMember(portfolioId: string, facilityId: string, inPortfolio: boolean) {
+    await setFacilityInPortfolio(portfolioId, facilityId, inPortfolio)
+    await refreshPortfolios()
+  }
+
+  const viewingPortfolio = useMemo(
+    () => portfolios.find((p) => p.id === viewingPortfolioId) ?? null,
+    [portfolios, viewingPortfolioId]
+  )
+
+  const portfolioReportData = useMemo(() => {
+    if (!viewingPortfolio) return null
+    const memberIds = [...(memberIdsByPortfolio.get(viewingPortfolio.id) ?? [])]
+    const members = resolvePortfolioMembers(memberIds, saved, snfs, hospitals)
+    return buildPortfolioReport(members, snfs)
+  }, [viewingPortfolio, memberIdsByPortfolio, saved, snfs, hospitals])
+
   if (loading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3 p-6 text-center">
@@ -216,32 +270,46 @@ export default function App() {
       </header>
 
       {view === 'board' ? (
-        <DealBoard
-          saved={saved}
-          snfs={snfs}
-          hospitals={hospitals}
-          snfFetchedAt={snfFetchedAt}
-          hospitalFetchedAt={hospitalFetchedAt}
-          onOpen={openFromBoard}
-          onRemove={async (row) => {
-            await removeSavedFacility(row.kind, row.ccn)
-            await refreshSaved()
-          }}
-          onNotesChange={async (row, notes) => {
-            await updateSavedNotes(row.kind, row.ccn, notes)
-            await refreshSaved()
-          }}
-          onMove={async (row, dir) => {
-            const ids = saved.map((s) => s.id)
-            const i = ids.indexOf(row.id)
-            const j = i + dir
-            if (j < 0 || j >= ids.length) return
-            ;[ids[i], ids[j]] = [ids[j], ids[i]]
-            await reorderSavedFacilities(ids)
-            await refreshSaved()
-          }}
-          onGoToSearch={() => setView('search')}
-        />
+        viewingPortfolio && portfolioReportData ? (
+          <PortfolioReport
+            portfolio={viewingPortfolio}
+            data={portfolioReportData}
+            onClose={() => setViewingPortfolioId(null)}
+          />
+        ) : (
+          <DealBoard
+            saved={saved}
+            snfs={snfs}
+            hospitals={hospitals}
+            snfFetchedAt={snfFetchedAt}
+            hospitalFetchedAt={hospitalFetchedAt}
+            portfolios={portfolios}
+            memberIdsByPortfolio={memberIdsByPortfolio}
+            onOpen={openFromBoard}
+            onRemove={async (row) => {
+              await removeSavedFacility(row.kind, row.ccn)
+              await refreshSaved()
+            }}
+            onNotesChange={async (row, notes) => {
+              await updateSavedNotes(row.kind, row.ccn, notes)
+              await refreshSaved()
+            }}
+            onMove={async (row, dir) => {
+              const ids = saved.map((s) => s.id)
+              const i = ids.indexOf(row.id)
+              const j = i + dir
+              if (j < 0 || j >= ids.length) return
+              ;[ids[i], ids[j]] = [ids[j], ids[i]]
+              await reorderSavedFacilities(ids)
+              await refreshSaved()
+            }}
+            onGoToSearch={() => setView('search')}
+            onCreatePortfolio={handleCreatePortfolio}
+            onDeletePortfolio={handleDeletePortfolio}
+            onToggleMember={handleToggleMember}
+            onViewReport={setViewingPortfolioId}
+          />
+        )
       ) : (
         <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
           <SearchBar snfs={snfs} hospitals={hospitals} onSelect={setAnchor} />
@@ -421,7 +489,14 @@ export default function App() {
           )}
         </main>
       )}
-      <BottomNav view={view} onChangeView={setView} savedCount={saved.length} />
+      <BottomNav
+        view={view}
+        onChangeView={(v) => {
+          if (v === 'board') setViewingPortfolioId(null)
+          setView(v)
+        }}
+        savedCount={saved.length}
+      />
     </div>
   )
 }

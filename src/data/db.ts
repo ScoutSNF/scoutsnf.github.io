@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { SnfRecord, HospitalRecord, SavedFacility } from '../types/facility'
+import type { SnfRecord, HospitalRecord, SavedFacility, Portfolio, PortfolioMember } from '../types/facility'
 import type { HospitalOccupancy } from './hhsOccupancy'
 
 export interface MetaRow {
@@ -31,6 +31,8 @@ class MarketRadiusDb extends Dexie {
   hhsState!: Table<HhsStateCacheRow, string>
   places!: Table<PlacesCacheRow, string>
   saved!: Table<SavedFacilityRow, string>
+  portfolios!: Table<Portfolio, string>
+  portfolioMembers!: Table<PortfolioMember, string>
 
   constructor() {
     super('scoutsnf')
@@ -41,6 +43,16 @@ class MarketRadiusDb extends Dexie {
       hhsState: 'state',
       places: 'ccn',
       saved: 'id, order'
+    })
+    this.version(2).stores({
+      snf: 'ccn, state',
+      hospitals: 'ccn, state',
+      meta: 'key',
+      hhsState: 'state',
+      places: 'ccn',
+      saved: 'id, order',
+      portfolios: 'id, order',
+      portfolioMembers: 'id, portfolioId, facilityId'
     })
   }
 }
