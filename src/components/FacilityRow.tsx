@@ -25,7 +25,7 @@ export function FacilityRow({
   return (
     <div ref={ref} className="border-b border-slate-200 dark:border-slate-800">
       <button
-        className="grid w-full grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] items-center gap-1.5 px-2 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-900 sm:gap-3 sm:px-3"
+        className="grid w-full grid-cols-[1.5rem_minmax(0,1fr)_2.1rem_1.6rem_2.9rem_2.9rem_1rem] items-center gap-1 px-1.5 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-900 sm:grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] sm:gap-3 sm:px-3"
         onClick={() => setExpanded((v) => !v)}
       >
         <span className="h-7 w-7 shrink-0 overflow-hidden rounded-md bg-slate-200 dark:bg-slate-800">
@@ -59,7 +59,7 @@ export function FacilityRow({
             </span>
           )}
         </span>
-        <span className="flex justify-end">
+        <span className="flex justify-end text-[10px] sm:text-sm">
           <StarRating rating={facility.overallRating} />
         </span>
         <button
@@ -84,6 +84,15 @@ export function FacilityRow({
             )}
           </div>
           <div className="min-w-0 flex-1 text-sm">
+            <div className="flex flex-wrap items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-100">
+              <span>{facility.name}</span>
+              <TypeBadge facility={facility} />
+              {facility.kind === 'snf' && facility.specialFocusFacility && (
+                <span className="whitespace-nowrap rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                  SFF
+                </span>
+              )}
+            </div>
             <div className="text-slate-600 dark:text-slate-300">{facility.address}</div>
             <div className="text-slate-600 dark:text-slate-300">
               {facility.city}, {facility.state} {facility.zip}
