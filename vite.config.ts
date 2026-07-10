@@ -2,9 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// GitHub Pages serves project sites from /<repo-name>/, so all asset and
-// manifest URLs need that prefix baked in at build time.
-const base = process.env.GITHUB_PAGES ? '/SNF-Demographic-Analytics-/' : '/'
+const base = '/'
 
 export default defineConfig({
   base,
