@@ -20,9 +20,3 @@ export const CENSUS_GEOCODE_BATCH_URL =
   'https://geocoding.geo.census.gov/geocoder/locations/addressbatch'
 
 export const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search'
-
-export const HHS_CAPACITY_SOCRATA_ID = 'anag-cw7u'
-export const HHS_CAPACITY_URL = (soql: string) =>
-  `https://healthdata.gov/resource/${HHS_CAPACITY_SOCRATA_ID}.json?${soql}`
-
-export const HHS_SENTINEL_SUPPRESSED = -999999

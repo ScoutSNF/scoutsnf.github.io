@@ -51,10 +51,8 @@ export interface HospitalRecord {
   overallRating: number | null
   emergencyServices: boolean | null
   certifiedBeds: number | null
-  /** From HHS facility-level capacity file. Null if never available for this CCN. */
+  /** Null until a cost-report-based figure is wired in. */
   occupancyPct: number | null
-  /** ISO date (Monday) of the HHS collection_week the occupancy value came from. */
-  occupancyAsOfWeek: string | null
 }
 
 export type FacilityRecord = SnfRecord | HospitalRecord

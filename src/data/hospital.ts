@@ -45,8 +45,7 @@ export async function fetchHospitalRecords(onRetry?: OnRetry): Promise<HospitalR
       overallRating: col.rating !== -1 ? parseNum(row[col.rating]) : null,
       emergencyServices: emergencyRaw === '' ? null : emergencyRaw === 'yes' || emergencyRaw === 'y',
       certifiedBeds: null,
-      occupancyPct: null,
-      occupancyAsOfWeek: null
+      occupancyPct: null
     })
   }
   return records

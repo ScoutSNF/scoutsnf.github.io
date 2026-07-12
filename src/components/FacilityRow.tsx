@@ -56,9 +56,7 @@ export function FacilityRow({
         <span className="flex flex-col items-end">
           <span className="text-xs tabular-nums sm:text-sm">{occupancy.text}</span>
           {occupancy.asOfLabel && (
-            <span className={`text-right text-[9px] leading-tight sm:text-[10px] ${occupancy.historical ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
-              {occupancy.asOfLabel}
-            </span>
+            <span className="text-right text-[9px] leading-tight text-slate-400 sm:text-[10px]">{occupancy.asOfLabel}</span>
           )}
         </span>
         <span className="flex justify-end overflow-hidden text-xs tabular-nums sm:hidden">

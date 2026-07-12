@@ -1,4 +1,4 @@
-import type { FacilityRecord, FacilityWithDistance, SnfRecord, HospitalRecord } from '../types/facility'
+import type { FacilityRecord, FacilityWithDistance } from '../types/facility'
 import { haversineMiles, roundMile } from './geo'
 
 export function withinRadius<T extends FacilityRecord>(
@@ -18,14 +18,4 @@ export function withinRadius<T extends FacilityRecord>(
   }
   results.sort((a, b) => a.distanceMiles - b.distanceMiles)
   return results
-}
-
-export function statesInResults(
-  snfResults: FacilityWithDistance<SnfRecord>[],
-  hospitalResults: FacilityWithDistance<HospitalRecord>[]
-): string[] {
-  const states = new Set<string>()
-  for (const r of hospitalResults) if (r.facility.state) states.add(r.facility.state)
-  for (const r of snfResults) if (r.facility.state) states.add(r.facility.state)
-  return [...states]
 }

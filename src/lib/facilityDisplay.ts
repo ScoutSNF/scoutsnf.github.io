@@ -3,8 +3,6 @@ import type { FacilityRecord } from '../types/facility'
 export interface OccupancyDisplay {
   text: string
   asOfLabel: string | null
-  /** Hospital occupancy is from a frozen 2024 dataset — style it as historical/muted. */
-  historical: boolean
 }
 
 function formatShortDate(dateStr: string): string {
@@ -13,30 +11,12 @@ function formatShortDate(dateStr: string): string {
   return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
 }
 
-function formatWeekOf(dateStr: string): string {
-  const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime())) return dateStr
-  return `wk of ${formatShortDate(dateStr)}`
-}
-
 export function getOccupancyDisplay(facility: FacilityRecord): OccupancyDisplay {
-  if (facility.kind === 'snf') {
-    if (facility.occupancyPct == null) return { text: 'N/A', asOfLabel: null, historical: false }
-    const capped = facility.occupancyPct > 100 ? '100%+' : `${facility.occupancyPct}%`
-    return {
-      text: capped,
-      asOfLabel: facility.processingDate ? `as of ${formatShortDate(facility.processingDate)}` : null,
-      historical: false
-    }
-  }
-  if (facility.occupancyPct == null) {
-    return { text: 'N/A', asOfLabel: facility.occupancyAsOfWeek ? formatWeekOf(facility.occupancyAsOfWeek) : null, historical: true }
-  }
-  return {
-    text: `${facility.occupancyPct}%`,
-    asOfLabel: facility.occupancyAsOfWeek ? formatWeekOf(facility.occupancyAsOfWeek) : null,
-    historical: true
-  }
+  if (facility.occupancyPct == null) return { text: 'N/A', asOfLabel: null }
+  const capped = facility.occupancyPct > 100 ? '100%+' : `${facility.occupancyPct}%`
+  const asOfLabel =
+    facility.kind === 'snf' && facility.processingDate ? `as of ${formatShortDate(facility.processingDate)}` : null
+  return { text: capped, asOfLabel }
 }
 
 export function getBedsDisplay(facility: FacilityRecord): string {

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from './types/facility'
 import { loadSnfData, loadHospitalData, recheckSnfCoordinates } from './data/dataset'
-import { loadOccupancyForStates } from './data/occupancy'
 import { HOSPITAL_TYPES } from './lib/hospitalType'
 import {
   listSavedFacilities,
@@ -18,7 +17,7 @@ import {
   listAllPortfolioMembers
 } from './data/portfolios'
 import type { SavedFacilityRow } from './data/db'
-import { withinRadius, statesInResults } from './lib/market'
+import { withinRadius } from './lib/market'
 import { resolvePortfolioMembers, buildPortfolioReport } from './lib/portfolioReport'
 import { SearchBar } from './components/SearchBar'
 import { AnchorCard } from './components/AnchorCard'
@@ -61,9 +60,6 @@ export default function App() {
   const [mapFilter, setMapFilter] = useState<'all' | 'snf' | 'hospital'>('all')
   const [compareFacility, setCompareFacility] = useState<{ facility: FacilityRecord; distanceMiles: number } | null>(null)
   const [hospitalTypeFilter, setHospitalTypeFilter] = useState<Set<HospitalType>>(new Set(HOSPITAL_TYPES))
-  const [occupancyByPk, setOccupancyByPk] = useState<Map<string, { occupancyPct: number | null; asOfWeek: string | null }>>(
-    new Map()
-  )
 
   async function refreshSaved() {
     setSaved(await listSavedFacilities())
@@ -169,26 +165,9 @@ export default function App() {
   }, [anchor, hospitals, radiusMiles])
 
   const hospitalResults = useMemo(
-    () => hospitalResultsAll.map((r) => ({
-      ...r,
-      facility: {
-        ...r.facility,
-        occupancyPct: occupancyByPk.get(r.facility.ccn)?.occupancyPct ?? r.facility.occupancyPct,
-        occupancyAsOfWeek: occupancyByPk.get(r.facility.ccn)?.asOfWeek ?? r.facility.occupancyAsOfWeek
-      }
-    })).filter((r) => hospitalTypeFilter.has(r.facility.hospitalType)),
-    [hospitalResultsAll, hospitalTypeFilter, occupancyByPk]
+    () => hospitalResultsAll.filter((r) => hospitalTypeFilter.has(r.facility.hospitalType)),
+    [hospitalResultsAll, hospitalTypeFilter]
   )
-
-  useEffect(() => {
-    if (hospitalResultsAll.length === 0) return
-    const states = statesInResults([], hospitalResultsAll)
-    void loadOccupancyForStates(states).then((map) => {
-      const obj = new Map<string, { occupancyPct: number | null; asOfWeek: string | null }>()
-      for (const [k, v] of map) obj.set(k, v)
-      setOccupancyByPk(obj)
-    })
-  }, [hospitalResultsAll])
 
   const mapResults = useMemo(() => {
     if (mapFilter === 'snf') return snfResults

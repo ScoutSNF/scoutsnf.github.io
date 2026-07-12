@@ -201,10 +201,9 @@ export async function loadHospitalData(
 }
 
 export async function clearAllCaches(): Promise<void> {
-  await db.transaction('rw', db.snf, db.hospitals, db.meta, db.hhsState, async () => {
+  await db.transaction('rw', db.snf, db.hospitals, db.meta, async () => {
     await db.snf.clear()
     await db.hospitals.clear()
     await db.meta.clear()
-    await db.hhsState.clear()
   })
 }

@@ -48,11 +48,7 @@ function Column({
           <dt className="text-xs text-slate-400">Occupancy</dt>
           <dd className="text-right tabular-nums">
             {occupancy.text}
-            {occupancy.asOfLabel && (
-              <span className={`ml-1 text-[10px] ${occupancy.historical ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
-                {occupancy.asOfLabel}
-              </span>
-            )}
+            {occupancy.asOfLabel && <span className="ml-1 text-[10px] text-slate-400">{occupancy.asOfLabel}</span>}
           </dd>
         </div>
         <div className="flex items-center justify-between">

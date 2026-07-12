@@ -1,16 +1,9 @@
 import Dexie, { type Table } from 'dexie'
 import type { SnfRecord, HospitalRecord, SavedFacility, Portfolio, PortfolioMember } from '../types/facility'
-import type { HospitalOccupancy } from './hhsOccupancy'
 
 export interface MetaRow {
   key: string
   fetchedAt: string
-}
-
-export interface HhsStateCacheRow {
-  state: string
-  fetchedAt: string
-  data: Record<string, HospitalOccupancy>
 }
 
 export interface PlacesCacheRow {
@@ -28,7 +21,6 @@ class MarketRadiusDb extends Dexie {
   snf!: Table<SnfRecord, string>
   hospitals!: Table<HospitalRecord, string>
   meta!: Table<MetaRow, string>
-  hhsState!: Table<HhsStateCacheRow, string>
   places!: Table<PlacesCacheRow, string>
   saved!: Table<SavedFacilityRow, string>
   portfolios!: Table<Portfolio, string>
@@ -53,6 +45,11 @@ class MarketRadiusDb extends Dexie {
       saved: 'id, order',
       portfolios: 'id, order',
       portfolioMembers: 'id, portfolioId, facilityId'
+    })
+    // The HHS weekly hospital-capacity feed was discontinued (frozen at May 2024)
+    // and is no longer used anywhere in the app -- drop its cache table.
+    this.version(3).stores({
+      hhsState: null
     })
   }
 }
