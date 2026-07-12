@@ -7,19 +7,29 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch the page
+      - name: Fetch the page and analyze inline (prints to log -- avoids needing artifact download)
         run: |
           curl -sSL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
             "https://www.cms.gov/data-research/statistics-trends-and-reports/cost-reports/cost-reports-fiscal-year" \
             -o page.html -w "HTTP %{http_code}\n"
+          echo "=== byte count ==="
           wc -c page.html
-          grep -oE '<a[^>]*href="[^"]*"[^>]*>' page.html | grep -i zip | head -50 > zip_links.txt || true
-          echo "--- zip link count ---"
-          wc -l zip_links.txt || true
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cms-page-debug
-          path: |
-            page.html
-            zip_links.txt
+          echo "=== any occurrence of 'zip' (case-insensitive), with context ==="
+          grep -ino '.\{60\}zip.\{60\}' page.html | head -30 || echo "(none)"
+
+          echo "=== any occurrence of 'SNF' (case-insensitive), with context ==="
+          grep -ino '.\{60\}SNF.\{60\}' page.html | head -30 || echo "(none)"
+
+          echo "=== all <a href> targets (first 80, deduped) ==="
+          grep -oE 'href="[^"]*"' page.html | sort -u | head -80 || echo "(none)"
+
+          echo "=== script/json data blobs (first 500 chars each, up to 5) ==="
+          grep -oE '<script[^>]*type="application/json"[^>]*>.{0,500}' page.html | head -5 || echo "(none found)"
+
+          echo "=== does the page mention 'cost-reports-by-fiscal-year' or similar API/data endpoints ==="
+          grep -ino '.\{40\}\(api\|endpoint\|/files/\|download\).\{60\}' page.html | sort -u | head -40 || echo "(none)"
+
+          echo "=== title tag and first 2000 chars of body for sanity ==="
+          grep -oE '<title>[^<]*</title>' page.html || echo "(no title found)"
+          sed -n '1,50p' page.html
