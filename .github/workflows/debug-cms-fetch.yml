@@ -70,3 +70,21 @@ jobs:
               }
             }
           ' "$NMRC"
+
+          echo ""
+          echo "=== hypothesis: does line 00200 == line 00100 (expenses) - line 00300 (revenue), i.e. a net operating loss line? ==="
+          awk -F, '
+            $2=="G300000" && $4=="00100" && $3=="00100" { expense[$1]=$5 }
+            $2=="G300000" && $4=="00100" && $3=="00200" { l200[$1]=$5 }
+            $2=="G300000" && $4=="00100" && $3=="00300" { rev[$1]=$5 }
+            END {
+              matched=0; total=0
+              for (r in l200) {
+                if (!(r in expense) || !(r in rev)) continue
+                total++
+                diff = expense[r]-rev[r]
+                if (diff == l200[r]+0) matched++
+              }
+              printf "matched %d / %d reports (line00200 == expenses-revenue)\n", matched, total
+            }
+          ' "$NMRC"
