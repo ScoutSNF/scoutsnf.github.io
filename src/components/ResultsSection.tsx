@@ -10,7 +10,7 @@ export function ResultsSection({
   savedIds,
   onToggleSave
 }: {
-  title: string
+  title?: string
   items: FacilityWithDistance<FacilityRecord>[]
   savedIds: Set<string>
   onToggleSave: (facility: FacilityRecord) => void
@@ -65,9 +65,11 @@ export function ResultsSection({
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <h2 className="border-b border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-800">
-        {title} ({items.length})
-      </h2>
+      {title && (
+        <h2 className="border-b border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-800">
+          {title} ({items.length})
+        </h2>
+      )}
       {items.length === 0 ? (
         <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">None within this radius</p>
       ) : (

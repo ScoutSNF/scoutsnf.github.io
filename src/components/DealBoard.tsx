@@ -155,9 +155,9 @@ export function DealBoard({
                   </button>
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <div className="flex gap-1">
-                      <button onClick={() => onMove(row, -1)} disabled={i === 0} className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200">▲</button>
-                      <button onClick={() => onMove(row, 1)} disabled={i === unfiledSaved.length - 1} className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200">▼</button>
-                      <button onClick={() => onRemove(row)} className="text-slate-400 hover:text-red-500">✕</button>
+                      <button onClick={() => onMove(row, -1)} disabled={i === 0} title="Move up" className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200">▲</button>
+                      <button onClick={() => onMove(row, 1)} disabled={i === unfiledSaved.length - 1} title="Move down" className="text-slate-400 hover:text-slate-700 disabled:opacity-30 dark:hover:text-slate-200">▼</button>
+                      <button onClick={() => onRemove(row)} title="Remove from ScoutBoard" className="text-slate-400 hover:text-red-500">✕</button>
                     </div>
                   </div>
                 </div>

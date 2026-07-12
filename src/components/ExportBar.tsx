@@ -1,41 +1,9 @@
 import { useState } from 'react'
 import type { FacilityWithDistance, FacilityRecord } from '../types/facility'
-import { copyTableToClipboard, type CsvRow } from '../lib/exportCsv'
 import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
 
 const HEADERS = ['Name', 'Type', 'City', 'State', 'Distance (mi)', 'Beds', 'Occupancy', 'Rating', 'CCN']
 const COLUMN_WIDTHS = [34, 12, 16, 7, 12, 8, 12, 8, 10]
-
-function toRows(items: FacilityWithDistance<FacilityRecord>[]): CsvRow[] {
-  return items.map(({ facility, distanceMiles }) => ({
-    Name: facility.name,
-    Type: facility.kind === 'snf' ? 'SNF' : facility.hospitalType,
-    City: facility.city,
-    State: facility.state,
-    'Distance (mi)': distanceMiles.toFixed(2),
-    Beds: getBedsDisplay(facility),
-    Occupancy: getOccupancyDisplay(facility).text,
-    Rating: facility.overallRating ?? '',
-    CCN: facility.ccn
-  }))
-}
-
-function CopyIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="9" y="9" width="12" height="12" rx="2" />
-      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
-    </svg>
-  )
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
-  )
-}
 
 function DownloadIcon({ className }: { className?: string }) {
   return (
@@ -48,7 +16,6 @@ function DownloadIcon({ className }: { className?: string }) {
 }
 
 export function ExportBar({ items, anchorName }: { items: FacilityWithDistance<FacilityRecord>[]; anchorName: string }) {
-  const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
 
   async function exportWorkbook() {
@@ -81,26 +48,13 @@ export function ExportBar({ items, anchorName }: { items: FacilityWithDistance<F
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <button
-        onClick={async () => {
-          await copyTableToClipboard(HEADERS, toRows(items))
-          setCopied(true)
-          setTimeout(() => setCopied(false), 1500)
-        }}
-        title="Copy as table"
-        className="text-xl text-slate-300 hover:text-brand dark:text-slate-600 dark:hover:text-slate-300"
-      >
-        {copied ? <CheckIcon className="text-emerald-500" /> : <CopyIcon />}
-      </button>
-      <button
-        onClick={exportWorkbook}
-        disabled={exporting}
-        title="Download report (Excel)"
-        className="text-xl text-slate-300 hover:text-brand disabled:opacity-40 dark:text-slate-600 dark:hover:text-slate-300"
-      >
-        <DownloadIcon />
-      </button>
-    </div>
+    <button
+      onClick={exportWorkbook}
+      disabled={exporting}
+      title="Download report (Excel)"
+      className="shrink-0 text-xl text-slate-300 hover:text-brand disabled:opacity-40 dark:text-slate-600 dark:hover:text-slate-300"
+    >
+      <DownloadIcon />
+    </button>
   )
 }

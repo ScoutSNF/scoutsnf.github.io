@@ -427,7 +427,6 @@ export default function App() {
 
                   {facilityTab === 'snf' ? (
                     <ResultsSection
-                      title="Skilled Nursing Facilities"
                       items={snfResults}
                       savedIds={savedIds}
                       onToggleSave={toggleSave}
@@ -461,7 +460,6 @@ export default function App() {
                       </div>
 
                       <ResultsSection
-                        title="Hospitals"
                         items={hospitalResults}
                         savedIds={savedIds}
                         onToggleSave={toggleSave}
