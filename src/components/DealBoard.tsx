@@ -189,12 +189,6 @@ export function DealBoard({
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {assignedFacilityIds.size > 0 && (
-            <p className="text-xs text-slate-400">
-              {assignedFacilityIds.size} saved facilit{assignedFacilityIds.size === 1 ? 'y is' : 'ies are'} filed into a
-              portfolio and hidden here — view them from Portfolios above.
-            </p>
-          )}
           {unfiledSaved.map((row, i) => {
             const facility = resolve(row)
             const occ = facility ? getOccupancyDisplay(facility) : null

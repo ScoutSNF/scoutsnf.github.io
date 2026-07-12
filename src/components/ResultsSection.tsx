@@ -52,9 +52,10 @@ export function ResultsSection({
     }
   }
 
-  const sortBtn = (key: SortKey, label: string, extraClass = '') => (
+  const sortBtn = (key: SortKey, label: string, extraClass = '', title?: string) => (
     <button
       onClick={() => handleSort(key)}
+      title={title}
       className={`truncate whitespace-nowrap text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 sm:text-xs ${extraClass}`}
     >
       {label}
@@ -74,7 +75,7 @@ export function ResultsSection({
           <div className="grid grid-cols-[1.5rem_minmax(0,1fr)_2.1rem_1.6rem_2.9rem_2.9rem_1rem] items-center gap-1 border-b border-slate-100 px-1.5 py-1.5 dark:border-slate-800 sm:grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] sm:gap-3 sm:px-3">
             <span />
             {sortBtn('name', 'Name')}
-            {sortBtn('distance', 'Dist.', 'text-right')}
+            {sortBtn('distance', 'Dist.', 'text-right', 'Straight-line distance, not drive time')}
             {sortBtn('beds', 'Beds', 'text-right')}
             {sortBtn('occupancy', 'Occ.', 'text-right')}
             {sortBtn('rating', 'Rating', 'text-right')}
