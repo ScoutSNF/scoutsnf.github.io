@@ -267,6 +267,7 @@ export default function App() {
             hospitals={hospitals}
             savedIds={savedIds}
             onToggleSave={toggleSave}
+            onOpen={openFromBoard}
             onClose={() => setViewingPortfolioId(null)}
             onRemoveMember={(facilityId) => handleToggleMember(viewingPortfolio.id, facilityId, false)}
           />

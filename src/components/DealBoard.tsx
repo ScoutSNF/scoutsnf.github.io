@@ -4,7 +4,6 @@ import type { FacilityRecord, HospitalRecord, SnfRecord, Portfolio } from '../ty
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
 import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
-import { rowsToCsv, downloadCsv } from '../lib/exportCsv'
 
 export function DealBoard({
   saved,
@@ -63,25 +62,40 @@ export function DealBoard({
   }
   const unfiledSaved = saved.filter((row) => !assignedFacilityIds.has(row.id))
 
-  function exportBoard() {
-    const rows = saved.map((row) => {
-      const facility = resolve(row)
-      const occ = facility ? getOccupancyDisplay(facility) : null
-      return {
-        Name: row.name,
-        City: row.city,
-        State: row.state,
-        Type: row.kind === 'snf' ? 'SNF' : facility && facility.kind === 'hospital' ? facility.hospitalType : 'Hospital',
-        'Saved Radius (mi)': row.radiusMiles,
-        Beds: facility ? getBedsDisplay(facility) : 'N/A',
-        Occupancy: occ?.text ?? 'N/A',
-        Rating: facility?.overallRating ?? '',
-        Notes: row.notes,
-        'Saved At': row.savedAt
-      }
-    })
-    const headers = ['Name', 'City', 'State', 'Type', 'Saved Radius (mi)', 'Beds', 'Occupancy', 'Rating', 'Notes', 'Saved At']
-    downloadCsv('scoutboard.csv', rowsToCsv(headers, rows))
+  const [exporting, setExporting] = useState(false)
+
+  async function exportBoard() {
+    setExporting(true)
+    try {
+      const { buildSimpleWorkbook, downloadBlob } = await import('../lib/simpleWorkbook')
+      const rows = saved.map((row) => {
+        const facility = resolve(row)
+        const occ = facility ? getOccupancyDisplay(facility) : null
+        return [
+          row.name,
+          row.city,
+          row.state,
+          row.kind === 'snf' ? 'SNF' : facility && facility.kind === 'hospital' ? facility.hospitalType : 'Hospital',
+          row.radiusMiles,
+          facility ? getBedsDisplay(facility) : 'N/A',
+          occ?.text ?? 'N/A',
+          facility?.overallRating != null ? facility.overallRating.toFixed(1) : '—',
+          row.notes,
+          new Date(row.savedAt).toLocaleDateString()
+        ]
+      })
+      const blob = await buildSimpleWorkbook({
+        title: 'ScoutBoard',
+        subtitle: `Generated ${new Date().toLocaleString()} · ${saved.length} facilit${saved.length === 1 ? 'y' : 'ies'}`,
+        sheetName: 'ScoutBoard',
+        headers: ['Name', 'City', 'State', 'Type', 'Saved Radius (mi)', 'Beds', 'Occupancy', 'Rating', 'Notes', 'Saved At'],
+        columnWidths: [34, 16, 7, 12, 12, 8, 12, 8, 40, 14],
+        rows
+      })
+      downloadBlob('scoutboard.xlsx', blob)
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -91,9 +105,10 @@ export function DealBoard({
         <div className="flex gap-2">
           <button
             onClick={exportBoard}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            disabled={exporting}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
           >
-            Export CSV
+            {exporting ? 'Building…' : 'Download report (Excel)'}
           </button>
           <button onClick={onGoToSearch} className="rounded-lg bg-brand px-3 py-1.5 text-sm text-white hover:opacity-90">
             + New search

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { PortfolioReportData } from '../lib/portfolioReport'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from '../types/facility'
 import { StarRating } from './StarRating'
+import { TypeBadge } from './TypeBadge'
 import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
 import { withinRadius } from '../lib/market'
 import { HOSPITAL_TYPES } from '../lib/hospitalType'
@@ -20,6 +21,7 @@ export function PortfolioReport({
   hospitals,
   savedIds,
   onToggleSave,
+  onOpen,
   onClose,
   onRemoveMember
 }: {
@@ -29,6 +31,7 @@ export function PortfolioReport({
   hospitals: HospitalRecord[]
   savedIds: Set<string>
   onToggleSave: (facility: FacilityRecord, radiusOverride?: number) => void
+  onOpen: (facility: FacilityRecord, radiusMiles: number) => void
   onClose: () => void
   onRemoveMember: (facilityId: string) => void
 }) {
@@ -258,13 +261,20 @@ export function PortfolioReport({
                 const occ = getOccupancyDisplay(m.facility)
                 return (
                   <div key={m.row.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                    <div>
-                      <span className="font-medium">{m.row.name}</span>{' '}
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                    <button
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => onOpen(m.facility, m.row.radiusMiles)}
+                      title="Open full details, same as from ScoutBoard"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{m.row.name}</span>
+                        <TypeBadge facility={m.facility} />
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
                         {m.row.city}, {m.row.state}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
+                      </div>
+                    </button>
+                    <div className="flex shrink-0 items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
                       <span>{getBedsDisplay(m.facility)} beds</span>
                       <span>{occ.text} occ</span>
                       <StarRating rating={m.facility.overallRating} />
