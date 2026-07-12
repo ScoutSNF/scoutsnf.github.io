@@ -24,8 +24,7 @@ describe('buildFacilityYearRecord', () => {
       medicaidPatientDays: 18688,
       totalPatientRevenue: 15_000_000,
       netPatientRevenue: 13_500_000,
-      totalOperatingExpenses: 13_680_000,
-      netIncome: -180_000
+      totalOperatingExpenses: 13_680_000
     })
 
     expect(warnings).toEqual([])
@@ -35,7 +34,9 @@ describe('buildFacilityYearRecord', () => {
     expect(record!.medicaidPct).toBe(64)
     expect(record!.otherPct).toBe(12)
     expect(record!.otherPatientDays).toBe(29200 - 7008 - 18688)
-    expect(record!.operatingMarginPct).toBe(-1.2)
+    // Net income is derived (totalPatientRevenue - totalOperatingExpenses), not read from its own cell.
+    expect(record!.netIncome).toBe(15_000_000 - 13_680_000)
+    expect(record!.operatingMarginPct).toBeCloseTo(((15_000_000 - 13_680_000) / 15_000_000) * 100, 1)
     expect(record!.reportStatusLabel).toBe('As submitted')
   })
 
@@ -80,16 +81,16 @@ describe('buildFacilityYearRecord', () => {
     expect(warnings.some((w) => w.includes('bedDaysAvailable'))).toBe(true)
   })
 
-  it('drops net income when implausible relative to expenses', () => {
-    const { record, warnings } = buildFacilityYearRecord(rpt(), {
+  it('leaves net income null when either input to the derivation is missing', () => {
+    const { record } = buildFacilityYearRecord(rpt(), {
       bedsAvailable: 100,
       totalPatientDays: 29200,
-      totalOperatingExpenses: 1_000_000,
-      netIncome: 50_000_000 // 50x expenses -- clearly a bad cell
+      totalOperatingExpenses: 1_000_000
+      // totalPatientRevenue never extracted for this report
     })
     expect(record).not.toBeNull()
     expect(record!.netIncome).toBeNull()
-    expect(warnings.some((w) => w.includes('netIncome') && w.includes('implausible'))).toBe(true)
+    expect(record!.operatingMarginPct).toBeNull()
   })
 
   it('leaves financial fields null (not zero) when never extracted', () => {

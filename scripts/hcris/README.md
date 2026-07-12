@@ -16,8 +16,11 @@ Runs against the live CMS site — needs real network access. GitHub Actions
 
 ## Design
 
-1. `scrape.ts` finds the current SNF-2010 zip links on CMS's "Cost Reports by Fiscal Year" page —
-   never hardcodes a URL pattern; throws loudly if the page structure changes and nothing matches.
+1. `scrape.ts` does a two-level fetch: CMS's "Cost Reports by Fiscal Year" index page never links
+   directly to a zip — it links to one per-form-per-fiscal-year sub-page (naming is inconsistent
+   across years, e.g. `snf-2010-fy-2025-data-files` vs the older `snf10-2010-fy-2022`), and the
+   actual zip download link lives on that sub-page. Never hardcodes a URL pattern; throws loudly,
+   naming the exact page, if either level's structure changes and nothing matches.
 2. `download.ts` streams each zip to disk and extracts via the system `unzip` binary.
 3. `parseRpt.ts` parses the headerless RPT file (one row per cost report: provider number, fiscal
    year, report status).
@@ -37,17 +40,28 @@ Runs against the live CMS site — needs real network access. GitHub Actions
 
 ## On the exact worksheet/line/column numbers in `metricCatalog.ts`
 
-This sandbox's network policy blocks direct access to cms.gov, resdac.org, and the CMS-2540-10
-instruction PDFs, so these coordinates were researched through search-indexed secondary sources
-rather than the authoritative documents themselves. Per field:
+This sandbox's network policy blocks direct access to cms.gov, so these coordinates were originally
+researched through search-indexed secondary sources rather than the authoritative CMS-2540-10
+instructions — and the first live pipeline run showed the initial best-effort guesses were wrong
+(the "confirmed" `bedsAvailable` field itself turned out to point at the bed-*days* column, not
+beds). Every coordinate below was subsequently re-verified by downloading a real FY2025 SNF-2010
+zip via a GitHub Actions runner (the only thing in this environment with real internet access) and
+checking the actual per-column value distribution or an exact accounting identity against all
+~400 real reports in the file — not a single sample. Per field:
 
-- **`bedsAvailable`** (Worksheet S-3 Part I, line 1) — CONFIRMED against multiple sources
-  specifically for the SNF-2010 form.
-- Everything else — **BEST-EFFORT**. Some of it (the G/G-2/G-3 financial lines especially) was
-  sourced from references that may describe the *hospital* 2552-10 form's layout rather than the
-  SNF-2010 form's own; the two forms share worksheet names but not line numbers (this was caught
-  once already — see the beds-available field, where the hospital form uses line 14/col 2 and the
-  SNF form uses line 1).
+- **`bedsAvailable`, `bedDaysAvailable`, `totalPatientDays`, `medicarePatientDays`,
+  `medicaidPatientDays`** (Worksheet S-3 Part I, line 1) — CONFIRMED: the column-by-column value
+  distribution for line 1 matches real bed counts (15-467, avg 110) at column 1, bed-days at column
+  2, etc. All five live on the same line for internal consistency (mixing lines would break the
+  occupancy ratio even if each line's data were individually valid).
+- **`totalPatientRevenue`, `netPatientRevenue`, `totalOperatingExpenses`** (Worksheet G-3, lines 3,
+  4, 1) — CONFIRMED: plausible dollar-magnitude distributions, and `netPatientRevenue` is always
+  less than or equal to `totalPatientRevenue` as expected.
+- **`netIncome`** is *not* extracted from its own cell — Worksheet G-3 line 5 looked plausible at a
+  glance but turned out to be the contractual-allowance deduction (`totalPatientRevenue -
+  netPatientRevenue`), confirmed wrong on 100% of a sampled set of reports, not net income at all.
+  It's derived downstream in `buildRecord.ts` as `totalPatientRevenue - totalOperatingExpenses`,
+  which exactly reproduces line 2 (negated) on all 405/405 real reports checked.
 
 **The safety net is `buildRecord.ts`'s validation gate, not the catalog's correctness.** A wrong
 coordinate should produce an out-of-range or internally-inconsistent value, which gets caught and
@@ -73,7 +87,7 @@ that's the signal its coordinate is wrong.
         "medicarePatientDays": 9000, "medicaidPatientDays": 18000, "otherPatientDays": 3000,
         "occupancyPct": 68.5, "medicarePct": 30.0, "medicaidPct": 60.0, "otherPct": 10.0,
         "totalPatientRevenue": 20000000, "netPatientRevenue": 18000000,
-        "totalOperatingExpenses": 17500000, "netIncome": 500000, "operatingMarginPct": 2.5
+        "totalOperatingExpenses": 17500000, "netIncome": 2500000, "operatingMarginPct": 12.5
       }
       // ...one entry per fiscal year on file for this facility, ascending
     ]

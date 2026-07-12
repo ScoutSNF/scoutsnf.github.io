@@ -50,7 +50,6 @@ export function buildFacilityYearRecord(rpt: RptRow, raw: RawMetricValues): Buil
   let totalPatientRevenue = inRange('totalPatientRevenue')
   let netPatientRevenue = inRange('netPatientRevenue')
   let totalOperatingExpenses = inRange('totalOperatingExpenses')
-  let netIncome = inRange('netIncome')
 
   // Bed-days available should roughly bound total patient days -- a report period is usually ~365
   // days, so this also catches a bedDaysAvailable cell pointed at the wrong line.
@@ -76,11 +75,10 @@ export function buildFacilityYearRecord(rpt: RptRow, raw: RawMetricValues): Buil
     netPatientRevenue = null
   }
 
-  // Net income implausible relative to expenses (loose bound -- just catches a badly wrong cell).
-  if (netIncome != null && totalOperatingExpenses != null && Math.abs(netIncome) > totalOperatingExpenses * 3) {
-    warnings.push(`${ctx}: netIncome (${netIncome}) implausible vs totalOperatingExpenses (${totalOperatingExpenses}) -- netIncome dropped`)
-    netIncome = null
-  }
+  // Net income = total patient revenue minus total operating expenses -- verified as an exact
+  // accounting identity (Worksheet G-3 line 2, negated) against every report in a real HCRIS file,
+  // so it's derived here rather than read from its own raw cell.
+  const netIncome = totalPatientRevenue != null && totalOperatingExpenses != null ? totalPatientRevenue - totalOperatingExpenses : null
 
   const occupancyPct = bedDaysAvailable && bedDaysAvailable > 0 ? round1((totalPatientDays / bedDaysAvailable) * 100) : null
   if (occupancyPct != null && (occupancyPct < 0 || occupancyPct > 110)) {

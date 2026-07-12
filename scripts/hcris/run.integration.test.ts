@@ -25,26 +25,24 @@ const RPT_CSV = [
 
 const NMRC_CSV = [
   // Facility 145001 (rpt 2001) -- entirely clean.
-  '2001,S300001,00100,00200,120',
-  '2001,S300001,00100,00600,43800',
-  '2001,S300001,00800,00700,30000',
-  '2001,S300001,00800,00500,9000',
-  '2001,S300001,00800,00600,18000',
+  '2001,S300001,00100,00100,120',
+  '2001,S300001,00100,00200,43800',
+  '2001,S300001,00100,00700,30000',
+  '2001,S300001,00100,00500,9000',
+  '2001,S300001,00100,00600,18000',
   '2001,G300000,00300,00100,20000000',
   '2001,G300000,00400,00100,18000000',
   '2001,G300000,00100,00100,17500000',
-  '2001,G300000,00500,00100,500000',
   // Facility 145002 (rpt 2002) -- medicarePatientDays deliberately absurd (a mis-mapped cell should
   // never silently pass through as real data).
-  '2002,S300001,00100,00200,80',
-  '2002,S300001,00100,00600,29200',
-  '2002,S300001,00800,00700,25000',
-  '2002,S300001,00800,00500,99999999',
-  '2002,S300001,00800,00600,10000',
+  '2002,S300001,00100,00100,80',
+  '2002,S300001,00100,00200,29200',
+  '2002,S300001,00100,00700,25000',
+  '2002,S300001,00100,00500,99999999',
+  '2002,S300001,00100,00600,10000',
   '2002,G300000,00300,00100,10000000',
   '2002,G300000,00400,00100,9000000',
-  '2002,G300000,00100,00100,8800000',
-  '2002,G300000,00500,00100,200000'
+  '2002,G300000,00100,00100,8800000'
 ].join('\n')
 
 let server: Server
@@ -92,7 +90,9 @@ describe('processFiscalYear (integration)', () => {
     expect(clean.bedsAvailable).toBe(120)
     expect(clean.occupancyPct).toBeCloseTo((30000 / 43800) * 100, 1)
     expect(clean.medicarePct).toBeCloseTo((9000 / 30000) * 100, 1)
-    expect(clean.operatingMarginPct).toBeCloseTo((500000 / 20000000) * 100, 1)
+    // Net income is derived (totalPatientRevenue - totalOperatingExpenses): 20,000,000 - 17,500,000.
+    expect(clean.netIncome).toBe(2_500_000)
+    expect(clean.operatingMarginPct).toBeCloseTo((2_500_000 / 20_000_000) * 100, 1)
     expect(clean.reportStatusLabel).toBe('As submitted')
 
     const bad = records.find((r) => r.ccn === '145002')!
