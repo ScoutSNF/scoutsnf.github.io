@@ -25,10 +25,10 @@ function styleHeaderRow(row: ExcelJS.Row, fill = TEAL, font = WHITE) {
   row.eachCell((cell) => {
     cell.font = { bold: true, color: { argb: font }, size: 11 }
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } }
-    cell.alignment = { vertical: 'middle' }
+    cell.alignment = { vertical: 'middle', wrapText: true }
     cell.border = thinBorder()
   })
-  row.height = 20
+  row.height = 28
 }
 
 function addTitle(sheet: ExcelJS.Worksheet, text: string, cols: number) {
@@ -47,6 +47,20 @@ function addSubtitle(sheet: ExcelJS.Worksheet, rowIndex: number, text: string, c
   cell.font = { italic: true, size: 10, color: { argb: MUTED } }
 }
 
+/** Rough estimate of characters that fit on one line of an Excel column at this width. */
+function charsPerLine(colWidth: number): number {
+  return Math.max(4, Math.floor(colWidth * 1.8))
+}
+
+/** Column widths, read back off the sheet, in the same order cells are written. */
+function columnWidths(sheet: ExcelJS.Worksheet, count: number): number[] {
+  const widths: number[] = []
+  for (let i = 1; i <= count; i++) {
+    widths.push(sheet.getColumn(i).width ?? 12)
+  }
+  return widths
+}
+
 function addTable(
   sheet: ExcelJS.Worksheet,
   startRow: number,
@@ -54,21 +68,29 @@ function addTable(
   rows: (string | number)[][],
   opts?: { rowFill?: (rowValues: (string | number)[], index: number) => string | undefined }
 ): number {
+  const widths = columnWidths(sheet, headers.length)
+
   const headerRow = sheet.getRow(startRow)
   headers.forEach((h, i) => (headerRow.getCell(i + 1).value = h))
   styleHeaderRow(headerRow)
 
   rows.forEach((values, i) => {
     const row = sheet.getRow(startRow + 1 + i)
-    values.forEach((v, ci) => (row.getCell(ci + 1).value = v))
+    let maxLines = 1
+    values.forEach((v, ci) => {
+      row.getCell(ci + 1).value = v
+      const lines = Math.ceil(String(v).length / charsPerLine(widths[ci] ?? 12))
+      if (lines > maxLines) maxLines = lines
+    })
     const customFill = opts?.rowFill?.(values, i)
     const fill = customFill ?? (i % 2 === 1 ? ZEBRA : WHITE)
     row.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } }
       cell.border = thinBorder()
       cell.font = { color: { argb: INK }, size: 10.5 }
-      cell.alignment = { vertical: 'middle' }
+      cell.alignment = { vertical: 'middle', wrapText: true }
     })
+    row.height = Math.max(18, maxLines * 14)
   })
 
   if (rows.length === 0) {
@@ -86,6 +108,17 @@ function ratingValue(rating: number | null): string {
   return rating != null ? rating.toFixed(1) : '—'
 }
 
+/** Landscape + fit-to-width so a wide table doesn't get clipped on print or export to PDF/image. */
+function applyPageSetup(sheet: ExcelJS.Worksheet) {
+  sheet.pageSetup = {
+    orientation: 'landscape',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
+  }
+}
+
 export async function buildPortfolioWorkbook(portfolio: Portfolio, data: PortfolioReportData): Promise<Blob> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'ScoutSNF'
@@ -93,7 +126,8 @@ export async function buildPortfolioWorkbook(portfolio: Portfolio, data: Portfol
 
   // --- Summary sheet ---
   const summary = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] })
-  summary.columns = [{ width: 28 }, { width: 16 }, { width: 8 }, { width: 10 }, { width: 12 }, { width: 10 }, { width: 16 }]
+  applyPageSetup(summary)
+  summary.columns = [{ width: 38 }, { width: 18 }, { width: 8 }, { width: 9 }, { width: 12 }, { width: 9 }, { width: 15 }]
   addTitle(summary, `Portfolio report: ${portfolio.name}`, 7)
   addSubtitle(
     summary,
@@ -133,7 +167,8 @@ export async function buildPortfolioWorkbook(portfolio: Portfolio, data: Portfol
 
   // --- Shared competitors sheet ---
   const shared = wb.addWorksheet('Shared Competitors', { views: [{ showGridLines: false }] })
-  shared.columns = [{ width: 28 }, { width: 16 }, { width: 8 }, { width: 12 }, { width: 46 }]
+  applyPageSetup(shared)
+  shared.columns = [{ width: 38 }, { width: 18 }, { width: 8 }, { width: 14 }, { width: 55 }]
   addTitle(shared, 'Competitors shared by 2+ of your facilities', 5)
   addSubtitle(
     shared,
@@ -175,7 +210,8 @@ export async function buildPortfolioWorkbook(portfolio: Portfolio, data: Portfol
     usedNames.add(sheetName.toLowerCase())
 
     const sheet = wb.addWorksheet(sheetName, { views: [{ showGridLines: false }] })
-    sheet.columns = [{ width: 28 }, { width: 16 }, { width: 8 }, { width: 12 }, { width: 8 }, { width: 12 }, { width: 10 }]
+    applyPageSetup(sheet)
+    sheet.columns = [{ width: 38 }, { width: 18 }, { width: 8 }, { width: 13 }, { width: 9 }, { width: 12 }, { width: 9 }]
     addTitle(sheet, `Competitors near ${m.row.name}`, 7)
     addSubtitle(sheet, 2, `Within the saved ${m.row.radiusMiles} mi search radius of ${m.row.name}, ${m.row.city}, ${m.row.state}.`, 7)
     addTable(
