@@ -48,3 +48,25 @@ jobs:
           echo ""
           echo "=== sample raw rows for the same RPT_REC_NUM, worksheet G300000 only ==="
           awk -F, -v rpt="$FIRST_RPT" '$1==rpt && $2=="G300000"' "$NMRC" | sort -t, -k3,3 -k4,4
+
+          echo ""
+          echo "=== cross-check: does line 00500 == line 00300 - line 00400 (revenue - net revenue), across many RPT_REC_NUMs? ==="
+          echo "also comparing against lines 02600/03100 as candidate 'real' net income"
+          awk -F, '
+            $2=="G300000" && $4=="00100" && $3=="00100" { exp[$1]=$5 }
+            $2=="G300000" && $4=="00100" && $3=="00300" { rev[$1]=$5 }
+            $2=="G300000" && $4=="00100" && $3=="00400" { netrev[$1]=$5 }
+            $2=="G300000" && $4=="00100" && $3=="00500" { l500[$1]=$5 }
+            $2=="G300000" && $4=="00100" && $3=="02600" { l2600[$1]=$5 }
+            $2=="G300000" && $4=="00100" && $3=="03100" { l3100[$1]=$5 }
+            END {
+              n=0
+              for (r in rev) {
+                if (n>=8) break
+                diff = rev[r]-netrev[r]
+                match_500 = (l500[r]!="" && diff==l500[r]+0) ? "MATCH" : "no"
+                printf "rpt=%s  exp=%s  rev=%s  netRev=%s  rev-netRev=%s  L500=%s(%s)  L2600=%s  L3100=%s\n", r, exp[r], rev[r], netrev[r], diff, l500[r], match_500, l2600[r], l3100[r]
+                n++
+              }
+            }
+          ' "$NMRC"
