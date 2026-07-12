@@ -200,13 +200,6 @@ export function PortfolioReport({
 
               {selectedMember && (
                 <>
-                  <p className="text-xs text-slate-400">
-                    Gold-ringed pins are your portfolio's facilities — all of them stay visible regardless of which one is
-                    selected. This is the exact same explore experience as a standalone facility: adjust the radius,
-                    filter by type, browse the full list — the distance/shared-competition sections on the List tab are
-                    the added portfolio context.
-                  </p>
-
                   <RadiusSlider
                     value={effectiveRadius}
                     onChange={setRadiusOverride}
@@ -303,7 +296,7 @@ export function PortfolioReport({
                         <TypeBadge facility={m.facility} />
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {m.row.city}, {m.row.state}
+                        {m.row.city}, {m.row.state} · saved radius {m.row.radiusMiles} mi
                       </div>
                     </button>
                     <div className="flex shrink-0 items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
@@ -341,23 +334,20 @@ export function PortfolioReport({
           )}
 
           <section className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="text-sm font-semibold">Competitors between your facilities</h2>
-            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-              Facilities within the saved search radius of two or more of your facilities — the shared ground between them.
-            </p>
+            <h2 className="mb-2 text-sm font-semibold">Competitors between your facilities</h2>
 
             <div className="mb-2 flex gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
               <button
                 onClick={() => setSharedTab('snf')}
                 className={`flex-1 rounded-md px-3 py-1.5 ${sharedTab === 'snf' ? 'bg-white shadow dark:bg-slate-700' : ''}`}
               >
-                SNFs ({data.uniqueCompetitorCount})
+                SNFs ({data.sharedCompetitors.length})
               </button>
               <button
                 onClick={() => setSharedTab('hospital')}
                 className={`flex-1 rounded-md px-3 py-1.5 ${sharedTab === 'hospital' ? 'bg-white shadow dark:bg-slate-700' : ''}`}
               >
-                Hospitals ({data.uniqueHospitalCount})
+                Hospitals ({data.sharedHospitals.length})
               </button>
             </div>
 

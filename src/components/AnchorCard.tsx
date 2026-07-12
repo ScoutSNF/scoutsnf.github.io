@@ -8,11 +8,13 @@ import { getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
 export function AnchorCard({
   facility,
   saved,
-  onToggleSave
+  onToggleSave,
+  actions
 }: {
   facility: FacilityRecord
   saved: boolean
   onToggleSave: () => void
+  actions?: ReactNode
 }) {
   const occupancy = getOccupancyDisplay(facility)
 
@@ -33,13 +35,16 @@ export function AnchorCard({
             {facility.address}, {facility.city}, {facility.state} {facility.zip} · CCN {facility.ccn}
           </p>
         </div>
-        <button
-          onClick={onToggleSave}
-          className={`text-2xl ${saved ? 'text-gold' : 'text-slate-300 hover:text-gold'}`}
-          title={saved ? 'Remove from ScoutBoard' : 'Save to ScoutBoard'}
-        >
-          <BookmarkIcon filled={saved} />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {actions}
+          <button
+            onClick={onToggleSave}
+            className={`text-2xl ${saved ? 'text-gold' : 'text-slate-300 hover:text-gold'}`}
+            title={saved ? 'Remove from ScoutBoard' : 'Save to ScoutBoard'}
+          >
+            <BookmarkIcon filled={saved} />
+          </button>
+        </div>
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -315,6 +315,7 @@ export default function App() {
                 facility={anchor}
                 saved={savedIds.has(`${anchor.kind}:${anchor.ccn}`)}
                 onToggleSave={() => toggleSave(anchor)}
+                actions={<ExportBar items={[...snfResults, ...hospitalResults]} anchorName={anchor.name} />}
               />
 
               <RadiusSlider
@@ -323,21 +324,14 @@ export default function App() {
                 facilityCount={snfResults.length + hospitalResults.length}
               />
 
-              <div className="flex items-center justify-between">
-                <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
-                  <button onClick={() => setTab('list')} className={`rounded-md px-3 py-1 ${tab === 'list' ? 'bg-white shadow dark:bg-slate-700' : ''}`}>
-                    List
-                  </button>
-                  <button onClick={() => setTab('map')} className={`rounded-md px-3 py-1 ${tab === 'map' ? 'bg-white shadow dark:bg-slate-700' : ''}`}>
-                    Map
-                  </button>
-                </div>
-                <ExportBar items={[...snfResults, ...hospitalResults]} anchorName={anchor.name} />
+              <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
+                <button onClick={() => setTab('list')} className={`rounded-md px-3 py-1 ${tab === 'list' ? 'bg-white shadow dark:bg-slate-700' : ''}`}>
+                  List
+                </button>
+                <button onClick={() => setTab('map')} className={`rounded-md px-3 py-1 ${tab === 'map' ? 'bg-white shadow dark:bg-slate-700' : ''}`}>
+                  Map
+                </button>
               </div>
-
-              <p className="text-xs text-slate-400">
-                Distance is straight-line (haversine), not drive time.
-              </p>
 
               {tab === 'map' ? (
                 anchor.latitude != null && anchor.longitude != null ? (
@@ -473,9 +467,6 @@ export default function App() {
                         savedIds={savedIds}
                         onToggleSave={toggleSave}
                       />
-                      <p className="text-[11px] text-slate-400">
-                        Facility-level hospital occupancy is no longer publicly reported; values shown are the last federally reported week.
-                      </p>
                     </>
                   )}
                 </>

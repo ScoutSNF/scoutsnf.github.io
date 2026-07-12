@@ -20,6 +20,33 @@ function toRows(items: FacilityWithDistance<FacilityRecord>[]): CsvRow[] {
   }))
 }
 
+function CopyIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+    </svg>
+  )
+}
+
+function CheckIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  )
+}
+
+function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 3v12" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M4 19h16" />
+    </svg>
+  )
+}
+
 export function ExportBar({ items, anchorName }: { items: FacilityWithDistance<FacilityRecord>[]; anchorName: string }) {
   const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -54,23 +81,25 @@ export function ExportBar({ items, anchorName }: { items: FacilityWithDistance<F
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex shrink-0 items-center gap-1">
       <button
         onClick={async () => {
           await copyTableToClipboard(HEADERS, toRows(items))
           setCopied(true)
           setTimeout(() => setCopied(false), 1500)
         }}
-        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+        title="Copy as table"
+        className="text-xl text-slate-300 hover:text-brand dark:text-slate-600 dark:hover:text-slate-300"
       >
-        {copied ? 'Copied!' : 'Copy as table'}
+        {copied ? <CheckIcon className="text-emerald-500" /> : <CopyIcon />}
       </button>
       <button
         onClick={exportWorkbook}
         disabled={exporting}
-        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
+        title="Download report (Excel)"
+        className="text-xl text-slate-300 hover:text-brand disabled:opacity-40 dark:text-slate-600 dark:hover:text-slate-300"
       >
-        {exporting ? 'Building…' : 'Download report (Excel)'}
+        <DownloadIcon />
       </button>
     </div>
   )
