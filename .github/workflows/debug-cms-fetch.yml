@@ -1,0 +1,25 @@
+name: Debug - fetch CMS cost reports page
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the page
+        run: |
+          curl -sSL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36" \
+            "https://www.cms.gov/data-research/statistics-trends-and-reports/cost-reports/cost-reports-fiscal-year" \
+            -o page.html -w "HTTP %{http_code}\n"
+          wc -c page.html
+          grep -oE '<a[^>]*href="[^"]*"[^>]*>' page.html | grep -i zip | head -50 > zip_links.txt || true
+          echo "--- zip link count ---"
+          wc -l zip_links.txt || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cms-page-debug
+          path: |
+            page.html
+            zip_links.txt
