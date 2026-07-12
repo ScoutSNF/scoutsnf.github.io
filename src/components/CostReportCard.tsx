@@ -63,7 +63,8 @@ function StatTile({
   )
 }
 
-function TrendLine({ points, color }: { points: { label: string; value: number }[]; color: string }) {
+function TrendLine({ points, color, suffix = '%' }: { points: { label: string; value: number }[]; color: string; suffix?: string }) {
+  const [pinnedIndex, setPinnedIndex] = useState<number | null>(null)
   const values = points.map((p) => p.value)
   const min = Math.min(...values)
   const max = Math.max(...values)
@@ -83,9 +84,34 @@ function TrendLine({ points, color }: { points: { label: string; value: number }
       <line x1="0" y1={padBottom} x2={w} y2={padBottom} stroke="currentColor" className="text-slate-200 dark:text-slate-700" strokeWidth="1" strokeDasharray="2,3" />
       <path d={fillD} fill={color} opacity="0.08" />
       <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {coords.map((c, i) => (
-        <circle key={i} cx={c.x} cy={c.y} r={i === coords.length - 1 ? 4 : 2.5} fill={color} />
-      ))}
+      {coords.map((c, i) => {
+        const text = `${points[i].label} ${points[i].value}${suffix}`
+        const bubbleWidth = Math.max(30, text.length * 4.6 + 8)
+        const bubbleX = Math.min(Math.max(c.x - bubbleWidth / 2, 2), w - bubbleWidth - 2)
+        const bubbleY = c.y - 22
+
+        return (
+          <g
+            key={i}
+            className="group cursor-pointer"
+            onClick={() => setPinnedIndex((current) => (current === i ? null : i))}
+            aria-label={text}
+          >
+            <circle cx={c.x} cy={c.y} r={10} fill="transparent" />
+            <circle cx={c.x} cy={c.y} r={i === coords.length - 1 ? 4 : 2.5} fill={color} />
+            <g
+              className={`pointer-events-none transition-opacity ${
+                pinnedIndex === i ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}
+            >
+              <rect x={bubbleX} y={bubbleY} width={bubbleWidth} height={13} rx={3} className="fill-slate-900 dark:fill-slate-700" />
+              <text x={bubbleX + bubbleWidth / 2} y={bubbleY + 9.5} textAnchor="middle" fontSize="8.5" fill="white" fontWeight="600">
+                {text}
+              </text>
+            </g>
+          </g>
+        )
+      })}
     </svg>
   )
 }
