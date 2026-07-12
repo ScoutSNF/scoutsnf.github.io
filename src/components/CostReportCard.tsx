@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { InfoPopover } from './InfoPopover'
 import type { LegendKey } from '../lib/legend'
 import type { FacilityYearRecord } from '../types/costReport'
@@ -95,6 +96,39 @@ const MIX_COLORS = {
   other: '#7256b0'
 }
 
+function PayerSegment({
+  widthPct,
+  color,
+  label,
+  pct,
+  roundedClass
+}: {
+  widthPct: number
+  color: string
+  label: string
+  pct: number
+  roundedClass: string
+}) {
+  const [pinned, setPinned] = useState(false)
+
+  return (
+    <div
+      className={`group relative h-full cursor-pointer ${roundedClass}`}
+      style={{ width: `${widthPct}%`, background: color }}
+      onClick={() => setPinned((p) => !p)}
+      aria-label={`${label} ${pct}%`}
+    >
+      <div
+        className={`pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-lg transition-opacity dark:bg-slate-700 ${
+          pinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        }`}
+      >
+        {label} {pct}%
+      </div>
+    </div>
+  )
+}
+
 function PayerMixTrend({ records }: { records: FacilityYearRecord[] }) {
   const usable = records.filter((r) => r.medicarePct != null && r.medicaidPct != null && r.otherPct != null)
   if (usable.length === 0) return null
@@ -106,16 +140,31 @@ function PayerMixTrend({ records }: { records: FacilityYearRecord[] }) {
         <InfoPopover legendKey="cost-report-payer-mix" />
       </div>
       <div className="flex gap-2.5">
-        {usable.map((r) => (
-          <div key={r.fyBeginDate} className="flex flex-1 flex-col gap-1">
-            <div className="flex h-4 overflow-hidden rounded">
-              <div style={{ width: `${r.medicarePct}%`, background: MIX_COLORS.medicare }} title={`Medicare ${r.medicarePct}%`} />
-              <div style={{ width: `${r.medicaidPct}%`, background: MIX_COLORS.medicaid }} title={`Medicaid ${r.medicaidPct}%`} />
-              <div style={{ width: `${r.otherPct}%`, background: MIX_COLORS.other }} title={`Other ${r.otherPct}%`} />
+        {usable.map((r) => {
+          const segments = [
+            { label: 'Medicare', pct: r.medicarePct!, color: MIX_COLORS.medicare },
+            { label: 'Medicaid', pct: r.medicaidPct!, color: MIX_COLORS.medicaid },
+            { label: 'Other', pct: r.otherPct!, color: MIX_COLORS.other }
+          ].filter((s) => s.pct > 0)
+
+          return (
+            <div key={r.fyBeginDate} className="flex flex-1 flex-col gap-1">
+              <div className="flex h-4">
+                {segments.map((s, i) => (
+                  <PayerSegment
+                    key={s.label}
+                    widthPct={s.pct}
+                    color={s.color}
+                    label={s.label}
+                    pct={s.pct}
+                    roundedClass={`${i === 0 ? 'rounded-l' : ''} ${i === segments.length - 1 ? 'rounded-r' : ''}`}
+                  />
+                ))}
+              </div>
+              <span className="text-center text-[9px] tabular-nums text-slate-400">{fyShort(r.fyBeginDate)}</span>
             </div>
-            <span className="text-center text-[9px] tabular-nums text-slate-400">{fyShort(r.fyBeginDate)}</span>
-          </div>
-        ))}
+          )
+        })}
       </div>
       <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-slate-500 dark:text-slate-400">
         <span className="inline-flex items-center gap-1">
