@@ -1,0 +1,54 @@
+name: HCRIS cost report refresh
+
+on:
+  schedule:
+    # Mid-to-late Jan/Apr/Jul/Oct, after each quarterly HCRIS release.
+    - cron: "0 8 25 1,4,7,10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run HCRIS pipeline
+        run: npm run hcris:run
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet -- public/data/hcris-cost-reports.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR with the refreshed data
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="hcris-refresh-$(date +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add public/data/hcris-cost-reports.json
+          git commit -m "Quarterly HCRIS cost report refresh"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --title "Quarterly HCRIS cost report refresh" \
+            --body "Automated refresh from the CMS Cost Reports by Fiscal Year page. Review the pipeline run log in the Actions tab before merging -- this updates the occupancy/margin/payer-mix figures shown across facility profiles." \
+            --base main \
+            --head "$BRANCH"
