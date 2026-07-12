@@ -53,7 +53,12 @@ checking the actual per-column value distribution or an exact accounting identit
   `medicaidPatientDays`** (Worksheet S-3 Part I, line 1) — CONFIRMED: the column-by-column value
   distribution for line 1 matches real bed counts (15-467, avg 110) at column 1, bed-days at column
   2, etc. All five live on the same line for internal consistency (mixing lines would break the
-  occupancy ratio even if each line's data were individually valid).
+  occupancy ratio even if each line's data were individually valid). `medicarePatientDays` and
+  `medicaidPatientDays` were themselves initially swapped -- a single-sample plausibility check
+  (does this one facility's payer mix look reasonable?) isn't enough, because a facility can
+  legitimately have either payer as the majority. The real check is a national aggregate: column 5
+  sums to ~63% of total patient days across 400+ real reports (Medicaid's typical dominant SNF
+  share) and column 6 to ~28% (Medicare's) -- confirm against the population, not one row.
 - **`totalPatientRevenue`, `netPatientRevenue`, `totalOperatingExpenses`** (Worksheet G-3, lines 3,
   4, 1) — CONFIRMED: plausible dollar-magnitude distributions, and `netPatientRevenue` is always
   less than or equal to `totalPatientRevenue` as expected.

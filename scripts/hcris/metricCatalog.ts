@@ -44,18 +44,22 @@ export const METRIC_CATALOG: MetricDef[] = [
   },
   {
     key: 'medicarePatientDays',
-    // CONFIRMED: same line, column 5.
+    // CONFIRMED: same line, column 6. Verified against national aggregates across 400+ real
+    // reports, not just per-record plausibility -- column 5 sums to 63.5% of total patient days
+    // nationally (Medicaid's typical dominant SNF share), column 6 to 27.5% (Medicare's).
     wkshtCd: 'S300001',
     lineNum: '00100',
-    clmnNum: '00500',
+    clmnNum: '00600',
     plausibleRange: [0, 730_000]
   },
   {
     key: 'medicaidPatientDays',
-    // CONFIRMED: same line, column 6.
+    // CONFIRMED: same line, column 5. See medicarePatientDays -- these two were previously swapped;
+    // a single-sample plausibility check missed it because that one sample happened to be one of the
+    // ~17% of reports where column 5 isn't the larger value.
     wkshtCd: 'S300001',
     lineNum: '00100',
-    clmnNum: '00600',
+    clmnNum: '00500',
     plausibleRange: [0, 730_000]
   },
   {
