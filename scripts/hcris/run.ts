@@ -2,7 +2,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { readFile } from 'node:fs/promises'
-import { COST_REPORTS_BY_FY_URL, findSnfZipLinks, mostRecentFiscalYears } from './scrape.js'
+import { findRecentSnfZipLinks } from './scrape.js'
 import { downloadToFile, extractZip, findExtractedFile } from './download.js'
 import { parseRpt } from './parseRpt.js'
 import { parseNmrcStream } from './parseNmrc.js'
@@ -50,9 +50,7 @@ export async function processFiscalYear(fy: number, zipUrl: string, workDir: str
 }
 
 export async function run(): Promise<void> {
-  const html = await (await fetch(COST_REPORTS_BY_FY_URL)).text()
-  const allLinks = await findSnfZipLinks(html)
-  const targets = mostRecentFiscalYears(allLinks, FY_WINDOW)
+  const targets = await findRecentSnfZipLinks(FY_WINDOW)
   console.log(`Selected ${targets.length} fiscal year(s): ${targets.map((t) => t.fiscalYear).join(', ')}`)
 
   const workDir = await mkdtemp(path.join(tmpdir(), 'hcris-'))
