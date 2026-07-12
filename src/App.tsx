@@ -57,6 +57,9 @@ export default function App() {
   const [viewingPortfolioId, setViewingPortfolioId] = useState<string | null>(null)
 
   const [anchor, setAnchor] = useState<FacilityRecord | null>(null)
+  /** Where to return when the back link is used: 'plain' = ScoutBoard's top-level list, a portfolio
+   * id = that specific portfolio's report, null = anchor wasn't opened from ScoutBoard (no back link). */
+  const [returnTarget, setReturnTarget] = useState<'plain' | string | null>(null)
   const [radiusMiles, setRadiusMiles] = useState(10)
   const [tab, setTab] = useState<'list' | 'map'>('list')
   const [facilityTab, setFacilityTab] = useState<'snf' | 'hospital'>('snf')
@@ -202,6 +205,7 @@ export default function App() {
   }
 
   function openFromBoard(facility: FacilityRecord, savedRadius: number) {
+    setReturnTarget(viewingPortfolioId ?? 'plain')
     setAnchor(facility)
     setRadiusMiles(savedRadius)
     setView('search')
@@ -327,7 +331,27 @@ export default function App() {
         )
       ) : (
         <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
-          <SearchBar snfs={snfs} hospitals={hospitals} onSelect={setAnchor} />
+          {returnTarget !== null && (
+            <button
+              onClick={() => {
+                setViewingPortfolioId(returnTarget === 'plain' ? null : returnTarget)
+                setReturnTarget(null)
+                setView('board')
+              }}
+              className="self-start text-sm text-slate-500 hover:text-brand dark:text-slate-400"
+            >
+              ← Back to {returnTarget === 'plain' ? 'ScoutBoard' : (portfolios.find((p) => p.id === returnTarget)?.name ?? 'ScoutBoard')}
+            </button>
+          )}
+
+          <SearchBar
+            snfs={snfs}
+            hospitals={hospitals}
+            onSelect={(facility) => {
+              setReturnTarget(null)
+              setAnchor(facility)
+            }}
+          />
 
           {anchor && (
             <>
@@ -503,6 +527,7 @@ export default function App() {
         view={view}
         onChangeView={(v) => {
           if (v === 'board') setViewingPortfolioId(null)
+          if (v === 'search') setReturnTarget(null)
           setView(v)
         }}
         savedCount={saved.length}
