@@ -4,6 +4,7 @@ import { TypeBadge } from './TypeBadge'
 import { StarRating } from './StarRating'
 import { PlaceholderImage } from './PlaceholderImage'
 import { BookmarkIcon } from './BookmarkIcon'
+import { InfoPopover } from './InfoPopover'
 import { useLazyPlaceInfo } from '../hooks/useLazyPlaceInfo'
 import { getOccupancyDisplay, getBedsDisplay, googleMapsDirectionsUrl, googleSearchUrl } from '../lib/facilityDisplay'
 
@@ -102,16 +103,23 @@ export function FacilityRow({
               {facility.city}, {facility.state} {facility.zip}
             </div>
             {facility.kind === 'snf' && (
-              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
-                <span>Health inspection: <StarRating rating={facility.healthInspectionRating} /></span>
-                <span>Staffing: <StarRating rating={facility.staffingRating} /></span>
-                <span>Quality measures: <StarRating rating={facility.qualityMeasureRating} /></span>
-                {facility.ownershipType && <span>Ownership: {facility.ownershipType}</span>}
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
+                <span className="inline-flex items-center gap-1">Health inspection: <StarRating rating={facility.healthInspectionRating} /></span>
+                <span className="inline-flex items-center gap-1">Staffing: <StarRating rating={facility.staffingRating} /></span>
+                <span className="inline-flex items-center gap-1">Quality measures: <StarRating rating={facility.qualityMeasureRating} /></span>
+                <InfoPopover legendKey="snf-sub-ratings" />
+                {facility.ownershipType && (
+                  <span className="inline-flex items-center gap-1">
+                    Ownership: {facility.ownershipType}
+                    <InfoPopover legendKey="snf-ownership" />
+                  </span>
+                )}
               </div>
             )}
             {facility.kind === 'hospital' && facility.emergencyServices != null && (
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                 Emergency services: {facility.emergencyServices ? 'Yes' : 'No'}
+                <InfoPopover legendKey="hospital-emergency" />
               </div>
             )}
             <div className="mt-2 flex flex-wrap gap-3 text-xs">

@@ -29,6 +29,7 @@ import { DealBoard } from './components/DealBoard'
 import { PortfolioReport } from './components/PortfolioReport'
 import { ExportBar } from './components/ExportBar'
 import { SettingsMenu } from './components/SettingsMenu'
+import { LegendPage } from './components/LegendPage'
 import { CompareCard } from './components/CompareCard'
 import { BottomNav } from './components/BottomNav'
 
@@ -42,6 +43,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [loadStage, setLoadStage] = useState('Loading SNF roster…')
   const [slowLoad, setSlowLoad] = useState(false)
+  const [legendOpen, setLegendOpen] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
 
   const [saved, setSaved] = useState<SavedFacilityRow[]>([])
@@ -275,6 +277,7 @@ export default function App() {
             hospitalFetchedAt={hospitalFetchedAt}
             onRefresh={() => void loadAll(true)}
             onRecheckCoordinates={recheckCoordinates}
+            onOpenLegend={() => setLegendOpen(true)}
           />
         </div>
         {errors.length > 0 && (
@@ -288,7 +291,9 @@ export default function App() {
         )}
       </header>
 
-      {view === 'board' ? (
+      {legendOpen ? (
+        <LegendPage onBack={() => setLegendOpen(false)} />
+      ) : view === 'board' ? (
         viewingPortfolio && portfolioReportData ? (
           <PortfolioReport
             portfolio={viewingPortfolio}

@@ -4,12 +4,14 @@ export function SettingsMenu({
   snfFetchedAt,
   hospitalFetchedAt,
   onRefresh,
-  onRecheckCoordinates
+  onRecheckCoordinates,
+  onOpenLegend
 }: {
   snfFetchedAt: string
   hospitalFetchedAt: string
   onRefresh: () => void
   onRecheckCoordinates: (onProgress?: (done: number, total: number) => void) => Promise<number>
+  onOpenLegend: () => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
@@ -92,6 +94,18 @@ export function SettingsMenu({
                     : `Re-verified ${recheckCount} facilit${recheckCount === 1 ? 'y' : 'ies'} that shared a location with another.`
                   : 'Fast, targeted fix for a known CMS data quirk (some facilities share a location with another). Only re-checks the ones affected — no full refresh needed.'}
             </p>
+          </div>
+
+          <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+            <button
+              onClick={() => {
+                onOpenLegend()
+                setOpen(false)
+              }}
+              className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-left text-xs hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+            >
+              Legend — data sources
+            </button>
           </div>
         </div>
       )}

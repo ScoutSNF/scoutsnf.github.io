@@ -3,6 +3,8 @@ import type { FacilityRecord } from '../types/facility'
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
 import { BookmarkIcon } from './BookmarkIcon'
+import { InfoPopover } from './InfoPopover'
+import type { LegendKey } from '../lib/legend'
 import { getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
 
 export function AnchorCard({
@@ -26,8 +28,9 @@ export function AnchorCard({
             <h1 className="text-lg font-bold">{facility.name}</h1>
             <TypeBadge facility={facility} />
             {facility.kind === 'snf' && facility.specialFocusFacility && (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
                 Special Focus Facility
+                <InfoPopover legendKey="snf-sff" />
               </span>
             )}
           </div>
@@ -48,21 +51,28 @@ export function AnchorCard({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Metric label="Certified beds" value={getBedsDisplay(facility)} />
-        <Metric label="Occupancy" value={occupancy.text} sub={occupancy.asOfLabel} />
-        <Metric label="Overall rating" value={<StarRating rating={facility.overallRating} />} />
+        <Metric label="Certified beds" legendKey={facility.kind === 'snf' ? 'snf-beds' : 'hospital-beds'} value={getBedsDisplay(facility)} />
+        <Metric label="Occupancy" legendKey={facility.kind === 'snf' ? 'snf-occupancy' : undefined} value={occupancy.text} sub={occupancy.asOfLabel} />
+        <Metric label="Overall rating" legendKey={facility.kind === 'snf' ? 'snf-overall-rating' : 'hospital-overall-rating'} value={<StarRating rating={facility.overallRating} />} />
         {facility.kind === 'snf' ? (
-          <Metric label="Ownership" value={facility.ownershipType ?? 'N/A'} />
+          <Metric label="Ownership" legendKey="snf-ownership" value={facility.ownershipType ?? 'N/A'} />
         ) : (
-          <Metric label="Emergency services" value={facility.emergencyServices ? 'Yes' : facility.emergencyServices === false ? 'No' : 'N/A'} />
+          <Metric label="Emergency services" legendKey="hospital-emergency" value={facility.emergencyServices ? 'Yes' : facility.emergencyServices === false ? 'No' : 'N/A'} />
         )}
       </div>
 
       {facility.kind === 'snf' && (
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-          <span>Health inspection: <StarRating rating={facility.healthInspectionRating} /></span>
-          <span>Staffing: <StarRating rating={facility.staffingRating} /></span>
-          <span>Quality measures: <StarRating rating={facility.qualityMeasureRating} /></span>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+          <span className="inline-flex items-center gap-1">
+            Health inspection: <StarRating rating={facility.healthInspectionRating} />
+          </span>
+          <span className="inline-flex items-center gap-1">
+            Staffing: <StarRating rating={facility.staffingRating} />
+          </span>
+          <span className="inline-flex items-center gap-1">
+            Quality measures: <StarRating rating={facility.qualityMeasureRating} />
+          </span>
+          <InfoPopover legendKey="snf-sub-ratings" />
           {facility.processingDate && <span>Data as of {facility.processingDate}</span>}
         </div>
       )}
@@ -70,10 +80,23 @@ export function AnchorCard({
   )
 }
 
-function Metric({ label, value, sub }: { label: string; value: ReactNode; sub?: string | null }) {
+function Metric({
+  label,
+  legendKey,
+  value,
+  sub
+}: {
+  label: string
+  legendKey?: LegendKey
+  value: ReactNode
+  sub?: string | null
+}) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</div>
+      <div className="flex items-center gap-1 text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        {label}
+        {legendKey && <InfoPopover legendKey={legendKey} />}
+      </div>
       <div className="font-semibold">{value}</div>
       {sub && <div className="text-[10px] text-amber-600 dark:text-amber-400">{sub}</div>}
     </div>
