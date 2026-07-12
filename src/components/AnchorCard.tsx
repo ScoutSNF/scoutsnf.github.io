@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { FacilityRecord } from '../types/facility'
+import type { FacilityYearRecord } from '../types/costReport'
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
 import { BookmarkIcon } from './BookmarkIcon'
@@ -11,14 +12,21 @@ export function AnchorCard({
   facility,
   saved,
   onToggleSave,
-  actions
+  actions,
+  costReportRecords
 }: {
   facility: FacilityRecord
   saved: boolean
   onToggleSave: () => void
   actions?: ReactNode
+  /** Same records shown in CostReportCard -- used here only to keep the hospital Occupancy stat
+   * from showing a stale N/A when the Cost Report card right below it clearly has the number. */
+  costReportRecords?: FacilityYearRecord[]
 }) {
   const occupancy = getOccupancyDisplay(facility)
+  const latestCostReport = costReportRecords && costReportRecords.length > 0 ? costReportRecords[costReportRecords.length - 1] : null
+  const hospitalOccupancyText =
+    facility.kind === 'hospital' && latestCostReport?.occupancyPct != null ? `${latestCostReport.occupancyPct}%` : occupancy.text
 
   return (
     <div className="rounded-xl border-2 border-brand/40 bg-white p-4 shadow-sm dark:bg-slate-900">
@@ -52,7 +60,12 @@ export function AnchorCard({
 
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Metric label="Certified beds" legendKey={facility.kind === 'snf' ? 'snf-beds' : 'hospital-beds'} value={getBedsDisplay(facility)} />
-        <Metric label="Occupancy" legendKey={facility.kind === 'snf' ? 'snf-occupancy' : undefined} value={occupancy.text} sub={occupancy.asOfLabel} />
+        <Metric
+          label="Occupancy"
+          legendKey={facility.kind === 'snf' ? 'snf-occupancy' : latestCostReport ? 'cost-report-occupancy' : undefined}
+          value={hospitalOccupancyText}
+          sub={facility.kind === 'snf' ? occupancy.asOfLabel : null}
+        />
         <Metric label="Overall rating" legendKey={facility.kind === 'snf' ? 'snf-overall-rating' : 'hospital-overall-rating'} value={<StarRating rating={facility.overallRating} />} />
         {facility.kind === 'snf' ? (
           <Metric label="Ownership" legendKey="snf-ownership" value={facility.ownershipType ?? 'N/A'} />

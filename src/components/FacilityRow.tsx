@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FacilityRecord } from '../types/facility'
+import type { FacilityYearRecord } from '../types/costReport'
 import { TypeBadge } from './TypeBadge'
 import { StarRating } from './StarRating'
 import { PlaceholderImage } from './PlaceholderImage'
@@ -12,16 +13,21 @@ export function FacilityRow({
   facility,
   distanceMiles,
   saved,
-  onToggleSave
+  onToggleSave,
+  costReportRecords
 }: {
   facility: FacilityRecord
   distanceMiles: number
   saved: boolean
   onToggleSave: () => void
+  costReportRecords?: FacilityYearRecord[]
 }) {
   const [expanded, setExpanded] = useState(false)
   const { ref, info } = useLazyPlaceInfo(facility.ccn, facility.name, facility.city, facility.state)
   const occupancy = getOccupancyDisplay(facility)
+  const latestCostReport = costReportRecords && costReportRecords.length > 0 ? costReportRecords[costReportRecords.length - 1] : null
+  const occupancyText =
+    facility.kind === 'hospital' && latestCostReport?.occupancyPct != null ? `${latestCostReport.occupancyPct}%` : occupancy.text
   const directionsUrl = googleMapsDirectionsUrl(facility)
 
   return (
@@ -54,8 +60,8 @@ export function FacilityRow({
         <span className="text-right text-xs tabular-nums sm:text-sm">{distanceMiles.toFixed(2)} mi</span>
         <span className="text-right text-xs tabular-nums sm:text-sm">{getBedsDisplay(facility)}</span>
         <span className="flex flex-col items-end">
-          <span className="text-xs tabular-nums sm:text-sm">{occupancy.text}</span>
-          {occupancy.asOfLabel && (
+          <span className="text-xs tabular-nums sm:text-sm">{occupancyText}</span>
+          {facility.kind === 'snf' && occupancy.asOfLabel && (
             <span className="text-right text-[9px] leading-tight text-slate-400 sm:text-[10px]">{occupancy.asOfLabel}</span>
           )}
         </span>

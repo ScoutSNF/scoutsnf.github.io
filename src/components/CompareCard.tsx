@@ -1,4 +1,5 @@
 import type { FacilityRecord } from '../types/facility'
+import type { FacilityYearRecord } from '../types/costReport'
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
 import { BookmarkIcon } from './BookmarkIcon'
@@ -8,14 +9,19 @@ function Column({
   facility,
   distanceLabel,
   saved,
-  onToggleSave
+  onToggleSave,
+  costReportRecords
 }: {
   facility: FacilityRecord
   distanceLabel: string
   saved: boolean
   onToggleSave: () => void
+  costReportRecords?: FacilityYearRecord[]
 }) {
   const occupancy = getOccupancyDisplay(facility)
+  const latestCostReport = costReportRecords && costReportRecords.length > 0 ? costReportRecords[costReportRecords.length - 1] : null
+  const occupancyText =
+    facility.kind === 'hospital' && latestCostReport?.occupancyPct != null ? `${latestCostReport.occupancyPct}%` : occupancy.text
   return (
     <div className="min-w-0 flex-1">
       <div className="flex items-start justify-between gap-1">
@@ -47,8 +53,8 @@ function Column({
         <div className="flex items-center justify-between">
           <dt className="text-xs text-slate-400">Occupancy</dt>
           <dd className="text-right tabular-nums">
-            {occupancy.text}
-            {occupancy.asOfLabel && <span className="ml-1 text-[10px] text-slate-400">{occupancy.asOfLabel}</span>}
+            {occupancyText}
+            {facility.kind === 'snf' && occupancy.asOfLabel && <span className="ml-1 text-[10px] text-slate-400">{occupancy.asOfLabel}</span>}
           </dd>
         </div>
         <div className="flex items-center justify-between">
@@ -68,7 +74,8 @@ export function CompareCard({
   distanceMiles,
   savedIds,
   onToggleSave,
-  onClose
+  onClose,
+  costReportsByCcn
 }: {
   anchor: FacilityRecord
   facility: FacilityRecord
@@ -76,6 +83,7 @@ export function CompareCard({
   savedIds: Set<string>
   onToggleSave: (facility: FacilityRecord) => void
   onClose: () => void
+  costReportsByCcn?: Map<string, FacilityYearRecord[]>
 }) {
   return (
     <div className="rounded-xl border-2 border-brand/40 bg-white p-4 shadow-sm dark:bg-slate-900">
@@ -91,6 +99,7 @@ export function CompareCard({
           distanceLabel="Anchor"
           saved={savedIds.has(`${anchor.kind}:${anchor.ccn}`)}
           onToggleSave={() => onToggleSave(anchor)}
+          costReportRecords={costReportsByCcn?.get(anchor.ccn)}
         />
         <div className="w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
         <Column
@@ -98,6 +107,7 @@ export function CompareCard({
           distanceLabel={`${distanceMiles.toFixed(2)} mi from anchor`}
           saved={savedIds.has(`${facility.kind}:${facility.ccn}`)}
           onToggleSave={() => onToggleSave(facility)}
+          costReportRecords={costReportsByCcn?.get(facility.ccn)}
         />
       </div>
     </div>

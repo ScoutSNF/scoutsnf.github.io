@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { FacilityRecord, FacilityWithDistance } from '../types/facility'
+import type { FacilityYearRecord } from '../types/costReport'
 import { FacilityRow } from './FacilityRow'
 
 type SortKey = 'distance' | 'name' | 'beds' | 'occupancy' | 'rating'
@@ -8,12 +9,14 @@ export function ResultsSection({
   title,
   items,
   savedIds,
-  onToggleSave
+  onToggleSave,
+  costReportsByCcn
 }: {
   title?: string
   items: FacilityWithDistance<FacilityRecord>[]
   savedIds: Set<string>
   onToggleSave: (facility: FacilityRecord) => void
+  costReportsByCcn?: Map<string, FacilityYearRecord[]>
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('distance')
   const [asc, setAsc] = useState(true)
@@ -91,6 +94,7 @@ export function ResultsSection({
                 distanceMiles={distanceMiles}
                 saved={savedIds.has(`${facility.kind}:${facility.ccn}`)}
                 onToggleSave={() => onToggleSave(facility)}
+                costReportRecords={costReportsByCcn?.get(facility.ccn)}
               />
             ))}
           </div>

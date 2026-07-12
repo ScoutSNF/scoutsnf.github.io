@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from './types/facility'
 import { loadSnfData, loadHospitalData, recheckSnfCoordinates } from './data/dataset'
+import { loadCostReports } from './data/costReports'
+import type { FacilityYearRecord } from './types/costReport'
 import { HOSPITAL_TYPES } from './lib/hospitalType'
 import {
   listSavedFacilities,
@@ -21,6 +23,7 @@ import { withinRadius } from './lib/market'
 import { resolvePortfolioMembers, buildPortfolioReport } from './lib/portfolioReport'
 import { SearchBar } from './components/SearchBar'
 import { AnchorCard } from './components/AnchorCard'
+import { CostReportCard } from './components/CostReportCard'
 import { RadiusSlider } from './components/RadiusSlider'
 import { ResultsSection } from './components/ResultsSection'
 import { MapView } from './components/MapView'
@@ -60,6 +63,7 @@ export default function App() {
   const [mapFilter, setMapFilter] = useState<'all' | 'snf' | 'hospital'>('all')
   const [compareFacility, setCompareFacility] = useState<{ facility: FacilityRecord; distanceMiles: number } | null>(null)
   const [hospitalTypeFilter, setHospitalTypeFilter] = useState<Set<HospitalType>>(new Set(HOSPITAL_TYPES))
+  const [costReportsByCcn, setCostReportsByCcn] = useState<Map<string, FacilityYearRecord[]>>(new Map())
 
   async function refreshSaved() {
     setSaved(await listSavedFacilities())
@@ -121,6 +125,9 @@ export default function App() {
     void loadAll(false)
     void refreshSaved()
     void refreshPortfolios()
+    // Supplementary, not required for the app to function -- doesn't gate the main loading screen,
+    // and quietly stays empty if the pipeline hasn't produced the file yet.
+    void loadCostReports().then(setCostReportsByCcn)
   }, [])
 
   useEffect(() => {
@@ -329,7 +336,10 @@ export default function App() {
                 saved={savedIds.has(`${anchor.kind}:${anchor.ccn}`)}
                 onToggleSave={() => toggleSave(anchor)}
                 actions={<ExportBar items={[...snfResults, ...hospitalResults]} anchorName={anchor.name} />}
+                costReportRecords={costReportsByCcn.get(anchor.ccn)}
               />
+
+              <CostReportCard records={costReportsByCcn.get(anchor.ccn) ?? []} kind={anchor.kind} />
 
               <RadiusSlider
                 value={radiusMiles}
@@ -416,6 +426,7 @@ export default function App() {
                         savedIds={savedIds}
                         onToggleSave={toggleSave}
                         onClose={() => setCompareFacility(null)}
+                        costReportsByCcn={costReportsByCcn}
                       />
                     )}
                   </>
@@ -444,6 +455,7 @@ export default function App() {
                       items={snfResults}
                       savedIds={savedIds}
                       onToggleSave={toggleSave}
+                      costReportsByCcn={costReportsByCcn}
                     />
                   ) : (
                     <>
@@ -477,6 +489,7 @@ export default function App() {
                         items={hospitalResults}
                         savedIds={savedIds}
                         onToggleSave={toggleSave}
+                        costReportsByCcn={costReportsByCcn}
                       />
                     </>
                   )}
