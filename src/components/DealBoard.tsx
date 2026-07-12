@@ -60,56 +60,9 @@ export function DealBoard({
   }
   const unfiledSaved = saved.filter((row) => !assignedFacilityIds.has(row.id))
 
-  const [exporting, setExporting] = useState(false)
-
-  async function exportBoard() {
-    setExporting(true)
-    try {
-      const { buildSimpleWorkbook, downloadBlob } = await import('../lib/simpleWorkbook')
-      const rows = saved.map((row) => {
-        const facility = resolve(row)
-        const occ = facility ? getOccupancyDisplay(facility) : null
-        return [
-          row.name,
-          row.city,
-          row.state,
-          row.kind === 'snf' ? 'SNF' : facility && facility.kind === 'hospital' ? facility.hospitalType : 'Hospital',
-          row.radiusMiles,
-          facility ? getBedsDisplay(facility) : 'N/A',
-          occ?.text ?? 'N/A',
-          facility?.overallRating != null ? facility.overallRating.toFixed(1) : '—',
-          row.notes,
-          new Date(row.savedAt).toLocaleDateString()
-        ]
-      })
-      const blob = await buildSimpleWorkbook({
-        title: 'ScoutBoard',
-        subtitle: `Generated ${new Date().toLocaleString()} · ${saved.length} facilit${saved.length === 1 ? 'y' : 'ies'}`,
-        sheetName: 'ScoutBoard',
-        headers: ['Name', 'City', 'State', 'Type', 'Saved Radius (mi)', 'Beds', 'Occupancy', 'Rating', 'Notes', 'Saved At'],
-        columnWidths: [34, 16, 7, 12, 12, 8, 12, 8, 40, 14],
-        rows
-      })
-      downloadBlob('scoutboard.xlsx', blob)
-    } finally {
-      setExporting(false)
-    }
-  }
-
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">ScoutBoard</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={exportBoard}
-            disabled={exporting}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800"
-          >
-            {exporting ? 'Building…' : 'Download report (Excel)'}
-          </button>
-        </div>
-      </div>
+      <h1 className="text-xl font-bold">ScoutBoard</h1>
 
       <section className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between">
