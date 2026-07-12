@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { PortfolioReportData } from '../lib/portfolioReport'
+import type { PortfolioReportData, SharedFacility } from '../lib/portfolioReport'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from '../types/facility'
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
@@ -12,6 +12,34 @@ import { RadiusSlider } from './RadiusSlider'
 
 function memberId(m: PortfolioReportData['members'][number]): string {
   return `${m.facility.kind}:${m.facility.ccn}`
+}
+
+interface SharedGroup<T extends FacilityRecord> {
+  memberNames: string[]
+  items: SharedFacility<T>[]
+}
+
+/** Groups shared facilities by exactly which of your portfolio facilities they're near, so with
+ * 3+ facilities the reader sees "shared between A & B" vs. "shared between B & C" separately
+ * instead of one undifferentiated list. */
+function groupByMemberCombo<T extends FacilityRecord>(shared: SharedFacility<T>[]): SharedGroup<T>[] {
+  const groups = new Map<string, SharedGroup<T>>()
+  for (const item of shared) {
+    const names = item.near.map((n) => n.member.row.name).sort((a, b) => a.localeCompare(b))
+    const key = names.join('|')
+    const group = groups.get(key) ?? { memberNames: names, items: [] }
+    group.items.push(item)
+    groups.set(key, group)
+  }
+  return [...groups.values()].sort((a, b) => {
+    if (b.memberNames.length !== a.memberNames.length) return b.memberNames.length - a.memberNames.length
+    return a.memberNames.join().localeCompare(b.memberNames.join())
+  })
+}
+
+function formatMemberNames(names: string[]): string {
+  if (names.length <= 1) return names.join('')
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`
 }
 
 export function PortfolioReport({
@@ -39,6 +67,7 @@ export function PortfolioReport({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [radiusOverride, setRadiusOverride] = useState<number | null>(null)
   const [resultFilter, setResultFilter] = useState<'all' | 'snf' | 'hospital'>('all')
+  const [sharedTab, setSharedTab] = useState<'snf' | 'hospital'>('snf')
   const [hospitalTypeFilter, setHospitalTypeFilter] = useState<Set<HospitalType>>(new Set(HOSPITAL_TYPES))
 
   useEffect(() => {
@@ -95,6 +124,9 @@ export function PortfolioReport({
 
   const combinedResults =
     resultFilter === 'snf' ? liveCompetitors : resultFilter === 'hospital' ? liveHospitals : [...liveCompetitors, ...liveHospitals]
+
+  const sharedCompetitorGroups = useMemo(() => groupByMemberCombo(data.sharedCompetitors), [data.sharedCompetitors])
+  const sharedHospitalGroups = useMemo(() => groupByMemberCombo(data.sharedHospitals), [data.sharedHospitals])
 
   const [exporting, setExporting] = useState(false)
 
@@ -311,63 +343,53 @@ export function PortfolioReport({
           <section className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
             <h2 className="text-sm font-semibold">Competitors between your facilities</h2>
             <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-              SNFs within the saved search radius of two or more of your facilities — the shared competitive ground between
-              them. {data.uniqueCompetitorCount} unique competitor{data.uniqueCompetitorCount === 1 ? '' : 's'} total across
-              the portfolio.
+              Facilities within the saved search radius of two or more of your facilities — the shared ground between them.
             </p>
-            {data.sharedCompetitors.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                No competitors currently fall within range of more than one of your facilities.
-              </p>
-            ) : (
-              <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
-                {data.sharedCompetitors.map((c) => (
-                  <div key={c.facility.ccn} className="py-2 text-sm">
-                    <div className="font-medium">
-                      {c.facility.name}{' '}
-                      <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                        {c.facility.city}, {c.facility.state}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      {c.near.map((n, i) => (
-                        <span key={i}>
-                          {n.distanceMiles} mi from {n.member.row.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="text-sm font-semibold">Hospitals shared by 2+ of your facilities</h2>
-            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-              Hospitals within the saved search radius of two or more of your facilities.{' '}
-              {data.uniqueHospitalCount} unique hospital{data.uniqueHospitalCount === 1 ? '' : 's'} total across the
-              portfolio.
-            </p>
-            {data.sharedHospitals.length === 0 ? (
+            <div className="mb-2 flex gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
+              <button
+                onClick={() => setSharedTab('snf')}
+                className={`flex-1 rounded-md px-3 py-1.5 ${sharedTab === 'snf' ? 'bg-white shadow dark:bg-slate-700' : ''}`}
+              >
+                SNFs ({data.uniqueCompetitorCount})
+              </button>
+              <button
+                onClick={() => setSharedTab('hospital')}
+                className={`flex-1 rounded-md px-3 py-1.5 ${sharedTab === 'hospital' ? 'bg-white shadow dark:bg-slate-700' : ''}`}
+              >
+                Hospitals ({data.uniqueHospitalCount})
+              </button>
+            </div>
+
+            {(sharedTab === 'snf' ? sharedCompetitorGroups : sharedHospitalGroups).length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                No hospitals currently fall within range of more than one of your facilities.
+                No {sharedTab === 'snf' ? 'competitors' : 'hospitals'} currently fall within range of more than one of your
+                facilities.
               </p>
             ) : (
-              <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
-                {data.sharedHospitals.map((h) => (
-                  <div key={h.facility.ccn} className="py-2 text-sm">
-                    <div className="font-medium">
-                      {h.facility.name}{' '}
-                      <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                        {h.facility.city}, {h.facility.state}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      {h.near.map((n, i) => (
-                        <span key={i}>
-                          {n.distanceMiles} mi from {n.member.row.name}
-                        </span>
+              <div className="flex flex-col gap-3">
+                {(sharedTab === 'snf' ? sharedCompetitorGroups : sharedHospitalGroups).map((group) => (
+                  <div key={group.memberNames.join('|')}>
+                    <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                      Shared by {formatMemberNames(group.memberNames)}
+                    </h3>
+                    <div className="flex flex-col divide-y divide-slate-100 rounded-lg border border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+                      {group.items.map((item) => (
+                        <div key={item.facility.ccn} className="p-2 text-sm">
+                          <div className="font-medium">
+                            {item.facility.name}{' '}
+                            <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                              {item.facility.city}, {item.facility.state}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
+                            {item.near.map((n, i) => (
+                              <span key={i}>
+                                {n.distanceMiles} mi from {n.member.row.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
