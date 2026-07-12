@@ -106,7 +106,7 @@ export async function loadSnfData(
   }
 
   try {
-    const fresh = await fetchSnfRecords()
+    const fresh = await fetchSnfRecords((attempt, attempts) => onProgress?.('roster-retry', attempt, attempts))
     if (fresh.length === 0) throw new Error('empty response')
 
     await fixCoordinateCollisions(fresh, (done, total) => onProgress?.('collisions', done, total))
@@ -138,7 +138,7 @@ export async function loadHospitalData(
   }
 
   try {
-    const roster = await fetchHospitalRecords()
+    const roster = await fetchHospitalRecords((attempt, attempts) => onProgress?.('roster-retry', attempt, attempts))
     if (roster.length === 0) throw new Error('empty response')
 
     // Reuse previously-geocoded coordinates for facilities we've already resolved, to avoid re-geocoding every refresh.

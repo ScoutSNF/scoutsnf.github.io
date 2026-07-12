@@ -41,6 +41,7 @@ export default function App() {
   const [hospitalFetchedAt, setHospitalFetchedAt] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadStage, setLoadStage] = useState('Loading SNF roster…')
+  const [slowLoad, setSlowLoad] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
 
   const [saved, setSaved] = useState<SavedFacilityRow[]>([])
@@ -83,7 +84,13 @@ export default function App() {
     setErrors([])
     setLoadStage('Loading SNF roster…')
     const snfResult = await loadSnfData(forceRefresh, (stage, done, total) => {
-      setLoadStage(stage === 'collisions' ? `Verifying SNF coordinates… ${done}/${total}` : 'Loading SNF roster…')
+      setLoadStage(
+        stage === 'collisions'
+          ? `Verifying SNF coordinates… ${done}/${total}`
+          : stage === 'roster-retry'
+            ? `Loading SNF roster… connection is slow, retrying (${done}/${total})`
+            : 'Loading SNF roster…'
+      )
     })
     setSnfs(snfResult.records)
     setSnfFetchedAt(snfResult.fetchedAt)
@@ -91,7 +98,13 @@ export default function App() {
 
     setLoadStage('Loading hospital roster + geocoding…')
     const hospitalResult = await loadHospitalData(forceRefresh, (stage, done, total) => {
-      setLoadStage(stage === 'geocoding' ? `Geocoding hospitals… ${done}/${total}` : 'Fetching hospital bed counts…')
+      setLoadStage(
+        stage === 'geocoding'
+          ? `Geocoding hospitals… ${done}/${total}`
+          : stage === 'roster-retry'
+            ? `Loading hospital roster… connection is slow, retrying (${done}/${total})`
+            : 'Fetching hospital bed counts…'
+      )
     })
     setHospitals(hospitalResult.records)
     setHospitalFetchedAt(hospitalResult.fetchedAt)
@@ -111,6 +124,17 @@ export default function App() {
     void refreshSaved()
     void refreshPortfolios()
   }, [])
+
+  useEffect(() => {
+    if (!loading) {
+      setSlowLoad(false)
+      return
+    }
+    // Timed off `loading` alone (not `loadStage`) — retries update loadStage every
+    // 0.5-2s and would otherwise keep resetting this before it ever fires.
+    const timer = setTimeout(() => setSlowLoad(true), 10_000)
+    return () => clearTimeout(timer)
+  }, [loading])
 
   useEffect(() => {
     if (initialViewSet || loading) return
@@ -228,6 +252,12 @@ export default function App() {
       <div className="flex h-screen flex-col items-center justify-center gap-3 p-6 text-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
         <p className="text-sm text-slate-500 dark:text-slate-400">{loadStage}</p>
+        {slowLoad && (
+          <p className="max-w-xs text-xs text-slate-400 dark:text-slate-500">
+            Taking longer than usual — this can happen on a slow or unstable connection. Still working, no need to
+            restart the app.
+          </p>
+        )}
       </div>
     )
   }

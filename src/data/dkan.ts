@@ -2,6 +2,8 @@ import { CMS_METASTORE_ITEM_URL, CMS_DATASTORE_QUERY_URL } from './sources'
 import { fetchWithRetry } from '../lib/fetchRetry'
 import { parseCsvTable, type CsvTable } from '../lib/csv'
 
+export type OnRetry = (attempt: number, attempts: number) => void
+
 interface DkanDistribution {
   data?: { downloadURL?: string; mediaType?: string; format?: string }
   downloadURL?: string
@@ -14,8 +16,8 @@ interface DkanDatasetItem {
 }
 
 /** Resolves the CSV bulk-download URL for a CMS provider-data-catalog dataset via its metastore item. */
-export async function resolveCsvDownloadUrl(datasetId: string, label: string): Promise<string | null> {
-  const res = await fetchWithRetry(CMS_METASTORE_ITEM_URL(datasetId), `${label} metadata`)
+export async function resolveCsvDownloadUrl(datasetId: string, label: string, onRetry?: OnRetry): Promise<string | null> {
+  const res = await fetchWithRetry(CMS_METASTORE_ITEM_URL(datasetId), `${label} metadata`, undefined, { onRetry })
   const json = (await res.json()) as DkanDatasetItem
   const distributions = json.distribution ?? []
   for (const dist of distributions) {
@@ -30,7 +32,7 @@ export async function resolveCsvDownloadUrl(datasetId: string, label: string): P
 }
 
 /** Paginated fallback via the datastore query JSON API, used if the CSV bulk pull fails. */
-async function fetchAllRowsViaQueryApi(datasetId: string, label: string): Promise<CsvTable> {
+async function fetchAllRowsViaQueryApi(datasetId: string, label: string, onRetry?: OnRetry): Promise<CsvTable> {
   const pageSize = 5000
   let offset = 0
   const allRows: Record<string, unknown>[] = []
@@ -38,7 +40,9 @@ async function fetchAllRowsViaQueryApi(datasetId: string, label: string): Promis
   while (true) {
     const res = await fetchWithRetry(
       `${CMS_DATASTORE_QUERY_URL(datasetId)}?limit=${pageSize}&offset=${offset}`,
-      `${label} data`
+      `${label} data`,
+      undefined,
+      { onRetry }
     )
     const json = (await res.json()) as { results?: Record<string, unknown>[] }
     const page = json.results ?? []
@@ -57,11 +61,11 @@ async function fetchAllRowsViaQueryApi(datasetId: string, label: string): Promis
 }
 
 /** Fetches a full CMS dataset as a normalized table: CSV bulk pull first, JSON pagination as fallback. */
-export async function fetchCmsDatasetTable(datasetId: string, label: string): Promise<CsvTable> {
+export async function fetchCmsDatasetTable(datasetId: string, label: string, onRetry?: OnRetry): Promise<CsvTable> {
   try {
-    const csvUrl = await resolveCsvDownloadUrl(datasetId, label)
+    const csvUrl = await resolveCsvDownloadUrl(datasetId, label, onRetry)
     if (csvUrl) {
-      const res = await fetchWithRetry(csvUrl, `${label} CSV`)
+      const res = await fetchWithRetry(csvUrl, `${label} CSV`, undefined, { onRetry })
       const text = await res.text()
       const table = parseCsvTable(text)
       if (table.rows.length > 0) return table
@@ -69,5 +73,5 @@ export async function fetchCmsDatasetTable(datasetId: string, label: string): Pr
   } catch {
     // fall through to JSON pagination
   }
-  return fetchAllRowsViaQueryApi(datasetId, label)
+  return fetchAllRowsViaQueryApi(datasetId, label, onRetry)
 }

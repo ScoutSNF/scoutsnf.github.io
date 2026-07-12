@@ -1,14 +1,14 @@
 import type { HospitalRecord } from '../types/facility'
 import { findColumn, parseNum } from '../lib/csv'
-import { fetchCmsDatasetTable } from './dkan'
+import { fetchCmsDatasetTable, type OnRetry } from './dkan'
 import { CMS_HOSPITAL_DATASET_ID } from './sources'
 import { classifyHospitalType } from '../lib/hospitalType'
 
 const SOURCE_LABEL = 'Hospital roster'
 
 /** Hospital General Information has no lat/lon or bed counts — those are joined in separately. */
-export async function fetchHospitalRecords(): Promise<HospitalRecord[]> {
-  const table = await fetchCmsDatasetTable(CMS_HOSPITAL_DATASET_ID, SOURCE_LABEL)
+export async function fetchHospitalRecords(onRetry?: OnRetry): Promise<HospitalRecord[]> {
+  const table = await fetchCmsDatasetTable(CMS_HOSPITAL_DATASET_ID, SOURCE_LABEL, onRetry)
 
   const col = {
     ccn: findColumn(table, ['facility_id', 'ccn', 'provider_number']),

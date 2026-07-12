@@ -1,12 +1,12 @@
 import type { SnfRecord } from '../types/facility'
 import { findColumn, parseNum } from '../lib/csv'
-import { fetchCmsDatasetTable } from './dkan'
+import { fetchCmsDatasetTable, type OnRetry } from './dkan'
 import { CMS_SNF_DATASET_ID } from './sources'
 
 const SOURCE_LABEL = 'SNF roster'
 
-export async function fetchSnfRecords(): Promise<SnfRecord[]> {
-  const table = await fetchCmsDatasetTable(CMS_SNF_DATASET_ID, SOURCE_LABEL)
+export async function fetchSnfRecords(onRetry?: OnRetry): Promise<SnfRecord[]> {
+  const table = await fetchCmsDatasetTable(CMS_SNF_DATASET_ID, SOURCE_LABEL, onRetry)
 
   const col = {
     ccn: findColumn(table, ['ccn', 'federal_provider_number', 'cms_certification_number_ccn', 'provider_number']),

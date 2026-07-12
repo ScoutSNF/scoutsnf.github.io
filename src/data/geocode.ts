@@ -87,7 +87,7 @@ export async function geocodeSingleNominatim(input: GeocodeInput): Promise<Geoco
   const q = `${input.address}, ${input.city}, ${input.state} ${input.zip}`
   const url = `${NOMINATIM_SEARCH_URL}?format=json&limit=1&q=${encodeURIComponent(q)}`
   try {
-    const res = await fetchWithRetry(url, 'Nominatim geocoder', {}, 2)
+    const res = await fetchWithRetry(url, 'Nominatim geocoder', {}, { attempts: 2 })
     const json = (await res.json()) as Array<{ lat: string; lon: string }>
     if (json.length === 0) return null
     return { latitude: Number(json[0].lat), longitude: Number(json[0].lon), approximate: true }
