@@ -1,19 +1,20 @@
 /**
- * CORS proxy for government data sources that don't send an
+ * CORS proxy for government/OSM data sources that don't send an
  * Access-Control-Allow-Origin header, deployed as a Cloudflare Worker.
  *
  *  - data.cms.gov (Provider Data Catalog: SNF/hospital rosters, bed counts)
  *  - geocoding.geo.census.gov (batch geocoder, used for the hospital roster)
+ *  - nominatim.openstreetmap.org (single-address fallback geocoder)
  *
  * Forwards the request's method and body (needed for the geocoder's
  * multipart POST) to the target URL, then re-serves the response with CORS
- * headers added. Only ever proxies the two allow-listed hosts, so it can't
+ * headers added. Only ever proxies the allow-listed hosts, so it can't
  * be used as an open proxy for arbitrary sites.
  *
  * Deployed at: https://scoutsnf-cms-proxy.shalomalizakatz.workers.dev
  * Referenced by: src/lib/corsProxy.ts (VITE_CMS_PROXY_BASE override)
  */
-const ALLOWED_HOSTS = ['data.cms.gov', 'geocoding.geo.census.gov']
+const ALLOWED_HOSTS = ['data.cms.gov', 'geocoding.geo.census.gov', 'nominatim.openstreetmap.org']
 
 export default {
   async fetch(request) {
