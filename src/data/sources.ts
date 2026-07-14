@@ -7,9 +7,18 @@ export const CMS_METASTORE_ITEM_URL = (id: string) =>
 export const CMS_DATASTORE_QUERY_URL = (id: string) =>
   `https://data.cms.gov/provider-data/api/1/datastore/query/${id}/0`
 
-export const CMS_DATA_JSON_URL = 'https://data.cms.gov/data.json'
 export const CMS_DATA_API_DATASET_URL = (uuid: string) =>
   `https://data.cms.gov/data-api/v1/dataset/${uuid}/data`
+
+/**
+ * "Provider of Services File - Hospital & Non-Hospital Facilities" — confirmed directly
+ * from https://data.cms.gov/provider-characteristics/hospitals-and-other-facilities/provider-of-services-file-hospital-non-hospital-facilities
+ * (its "API" tab). This dataset isn't discoverable by title search through either the
+ * Provider Data Catalog metastore or the general data.json catalog — confirmed by
+ * scanning both live and finding zero titles mentioning "provider of services" — so the
+ * UUID has to be hardcoded rather than looked up dynamically.
+ */
+export const CMS_POS_HOSPITAL_DATASET_UUID = '8ba0f9b4-9493-4aa0-9f82-44ea9468d1b5'
 
 export const CENSUS_GEOCODE_SINGLE_URL = (addr: string) =>
   `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(

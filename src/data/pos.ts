@@ -1,86 +1,11 @@
-import { CMS_DATA_JSON_URL, CMS_DATA_API_DATASET_URL } from './sources'
-import { fetchWithRetry, SourceFetchError } from '../lib/fetchRetry'
+import { CMS_DATA_API_DATASET_URL, CMS_POS_HOSPITAL_DATASET_UUID } from './sources'
+import { fetchWithRetry } from '../lib/fetchRetry'
 import { findColumn, parseNum } from '../lib/csv'
-import { fetchCmsDatasetTable } from './dkan'
 
-interface DcatDataset {
-  title?: string
-  identifier?: string
-}
-
-/** Order-independent so a catalog title like "Hospital & Non-Hospital Facilities — Provider of Services File" still matches. */
-function isPosTitle(title: string): boolean {
-  const t = title.toLowerCase()
-  return t.includes('provider of services') && t.includes('hospital')
-}
-
-/**
- * Preferred lookup: the same Provider Data Catalog metastore API that
- * fetchHospitalRecords/fetchSnfRecords already use successfully (proven
- * reachable through the CORS proxy). Not guaranteed to include the POS
- * file, so failures here fall through to the data.json catalog below
- * rather than failing the whole bed-count fetch.
- */
-async function findPosDatasetIdViaMetastore(): Promise<string | null> {
-  const res = await fetchWithRetry(
-    'https://data.cms.gov/provider-data/api/1/metastore/schemas/dataset/items?show-reference-ids=false',
-    'Provider data catalog'
-  )
-  const json = (await res.json()) as DcatDataset[] | { data?: DcatDataset[] }
-  const items = Array.isArray(json) ? json : json.data ?? []
-  const match = items.find((d) => isPosTitle(d.title ?? ''))
-  if (!match?.identifier) {
-    console.warn(
-      `[pos] no POS dataset in Provider Data Catalog metastore (${items.length} items scanned)`
-    )
-  }
-  return match?.identifier ?? null
-}
-
-async function fetchBedsViaMetastore(): Promise<Map<string, number> | null> {
-  const id = await findPosDatasetIdViaMetastore()
-  if (!id) return null
-  const table = await fetchCmsDatasetTable(id, 'Hospital bed data')
-  const ccnIdx = findColumn(table, ['prvdr_num', 'ccn', 'federal_provider_number'])
-  const bedIdx = findColumn(table, ['crtfd_bed_cnt', 'certified_bed_cnt', 'bed_cnt'])
-  if (ccnIdx === -1 || bedIdx === -1) return null
-
-  const beds = new Map<string, number>()
-  for (const row of table.rows) {
-    const ccn = row[ccnIdx]?.trim()
-    const bedCount = parseNum(row[bedIdx])
-    if (ccn && bedCount != null) beds.set(ccn, bedCount)
-  }
-  return beds.size > 0 ? beds : null
-}
-
-async function findPosDatasetUuid(): Promise<string> {
-  const res = await fetchWithRetry(CMS_DATA_JSON_URL, 'POS catalog')
-  const json = (await res.json()) as { dataset?: DcatDataset[] }
-  const datasets = json.dataset ?? []
-  const match = datasets.find((d) => isPosTitle(d.title ?? ''))
-  if (!match?.identifier) {
-    // Surface *why* the search came up empty instead of a generic message — this
-    // fetch can't be exercised or debugged from the build environment, so the next
-    // failure needs to be diagnosable from this text alone rather than another guess.
-    const nearMisses = datasets
-      .filter((d) => /provider|pos file|hospital/i.test(d.title ?? ''))
-      .map((d) => d.title)
-      .filter((t): t is string => !!t)
-      .slice(0, 5)
-    const detail =
-      nearMisses.length > 0
-        ? `no match among ${datasets.length} datasets; closest titles: ${nearMisses.join(' | ')}`
-        : `no match among ${datasets.length} datasets; none mention "provider", "pos file", or "hospital"`
-    throw new SourceFetchError('Hospital bed data', `Hospital bed data unavailable — retry (${detail})`)
-  }
-  return match.identifier
-}
-
-async function fetchBedsViaDataJson(): Promise<Map<string, number>> {
-  const uuid = await findPosDatasetUuid()
-  // CMS's datastore query API rejects overly-large `limit`/`size` values with a flat 400
-  // Bad Request rather than silently capping them (confirmed in production for the sibling
+/** Fetches certified bed counts from the CMS Provider of Services file, keyed by CCN. */
+export async function fetchHospitalBedCounts(): Promise<Map<string, number>> {
+  // CMS's datastore query API rejects overly-large `size` values with a flat 400 Bad
+  // Request rather than silently capping them (confirmed in production for the sibling
   // provider-data query API in dkan.ts) — keep this conservative for the same reason.
   const pageSize = 500
   let offset = 0
@@ -92,7 +17,7 @@ async function fetchBedsViaDataJson(): Promise<Map<string, number>> {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await fetchWithRetry(
-      `${CMS_DATA_API_DATASET_URL(uuid)}?size=${pageSize}&offset=${offset}`,
+      `${CMS_DATA_API_DATASET_URL(CMS_POS_HOSPITAL_DATASET_UUID)}?size=${pageSize}&offset=${offset}`,
       'Hospital bed data'
     )
     const json = (await res.json()) as Record<string, unknown>[] | { data?: Record<string, unknown>[] }
@@ -122,16 +47,4 @@ async function fetchBedsViaDataJson(): Promise<Map<string, number>> {
     if (offset > 100_000) break // safety cap
   }
   return beds
-}
-
-/** Fetches certified bed counts from the CMS Provider of Services file, keyed by CCN. */
-export async function fetchHospitalBedCounts(): Promise<Map<string, number>> {
-  try {
-    const beds = await fetchBedsViaMetastore()
-    if (beds) return beds
-    console.warn('[pos] metastore lookup found no usable POS dataset, falling back to data.json catalog')
-  } catch (err) {
-    console.warn('[pos] metastore bed lookup failed, falling back to data.json catalog', err)
-  }
-  return fetchBedsViaDataJson()
 }
