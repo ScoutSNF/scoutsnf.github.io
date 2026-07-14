@@ -3,11 +3,15 @@ import { fetchWithRetry, SourceFetchError } from '../lib/fetchRetry'
 import { findColumn, parseNum } from '../lib/csv'
 import { fetchCmsDatasetTable } from './dkan'
 
-const POS_TITLE_PATTERN = /provider of services file.*hospital/i
-
 interface DcatDataset {
   title?: string
   identifier?: string
+}
+
+/** Order-independent so a catalog title like "Hospital & Non-Hospital Facilities — Provider of Services File" still matches. */
+function isPosTitle(title: string): boolean {
+  const t = title.toLowerCase()
+  return t.includes('provider of services') && t.includes('hospital')
 }
 
 /**
@@ -24,7 +28,12 @@ async function findPosDatasetIdViaMetastore(): Promise<string | null> {
   )
   const json = (await res.json()) as DcatDataset[] | { data?: DcatDataset[] }
   const items = Array.isArray(json) ? json : json.data ?? []
-  const match = items.find((d) => POS_TITLE_PATTERN.test(d.title ?? ''))
+  const match = items.find((d) => isPosTitle(d.title ?? ''))
+  if (!match?.identifier) {
+    console.warn(
+      `[pos] no POS dataset in Provider Data Catalog metastore (${items.length} items scanned)`
+    )
+  }
   return match?.identifier ?? null
 }
 
@@ -48,9 +57,22 @@ async function fetchBedsViaMetastore(): Promise<Map<string, number> | null> {
 async function findPosDatasetUuid(): Promise<string> {
   const res = await fetchWithRetry(CMS_DATA_JSON_URL, 'POS catalog')
   const json = (await res.json()) as { dataset?: DcatDataset[] }
-  const match = (json.dataset ?? []).find((d) => POS_TITLE_PATTERN.test(d.title ?? ''))
+  const datasets = json.dataset ?? []
+  const match = datasets.find((d) => isPosTitle(d.title ?? ''))
   if (!match?.identifier) {
-    throw new SourceFetchError('Hospital bed data', 'Hospital bed data unavailable — retry')
+    // Surface *why* the search came up empty instead of a generic message — this
+    // fetch can't be exercised or debugged from the build environment, so the next
+    // failure needs to be diagnosable from this text alone rather than another guess.
+    const nearMisses = datasets
+      .filter((d) => /provider|pos file|hospital/i.test(d.title ?? ''))
+      .map((d) => d.title)
+      .filter((t): t is string => !!t)
+      .slice(0, 5)
+    const detail =
+      nearMisses.length > 0
+        ? `no match among ${datasets.length} datasets; closest titles: ${nearMisses.join(' | ')}`
+        : `no match among ${datasets.length} datasets; none mention "provider", "pos file", or "hospital"`
+    throw new SourceFetchError('Hospital bed data', `Hospital bed data unavailable — retry (${detail})`)
   }
   return match.identifier
 }
