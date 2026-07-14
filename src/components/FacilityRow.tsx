@@ -14,13 +14,15 @@ export function FacilityRow({
   distanceMiles,
   saved,
   onToggleSave,
-  costReportRecords
+  costReportRecords,
+  onCompare
 }: {
   facility: FacilityRecord
   distanceMiles: number
   saved: boolean
   onToggleSave: () => void
   costReportRecords?: FacilityYearRecord[]
+  onCompare?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const { ref, info } = useLazyPlaceInfo(facility.ccn, facility.name, facility.city, facility.state)
@@ -127,6 +129,11 @@ export function FacilityRow({
               </div>
             )}
             <div className="mt-2 flex flex-wrap gap-3 text-xs">
+              {onCompare && (
+                <button onClick={onCompare} className="text-sky-600 hover:underline dark:text-sky-400">
+                  Compare to anchor
+                </button>
+              )}
               {info?.website ? (
                 <a href={info.website} target="_blank" rel="noreferrer" className="text-sky-600 hover:underline dark:text-sky-400">
                   Website ↗

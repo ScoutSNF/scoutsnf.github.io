@@ -380,6 +380,18 @@ export default function App() {
                 </button>
               </div>
 
+              {compareFacility && (
+                <CompareCard
+                  anchor={anchor}
+                  facility={compareFacility.facility}
+                  distanceMiles={compareFacility.distanceMiles}
+                  savedIds={savedIds}
+                  onToggleSave={toggleSave}
+                  onClose={() => setCompareFacility(null)}
+                  costReportsByCcn={costReportsByCcn}
+                />
+              )}
+
               {tab === 'map' ? (
                 anchor.latitude != null && anchor.longitude != null ? (
                   <>
@@ -441,18 +453,6 @@ export default function App() {
                         onSelect={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
                       />
                     </div>
-
-                    {compareFacility && (
-                      <CompareCard
-                        anchor={anchor}
-                        facility={compareFacility.facility}
-                        distanceMiles={compareFacility.distanceMiles}
-                        savedIds={savedIds}
-                        onToggleSave={toggleSave}
-                        onClose={() => setCompareFacility(null)}
-                        costReportsByCcn={costReportsByCcn}
-                      />
-                    )}
                   </>
                 ) : (
                   <p className="text-sm text-slate-500">Anchor location unavailable — map view needs coordinates.</p>
@@ -480,6 +480,7 @@ export default function App() {
                       savedIds={savedIds}
                       onToggleSave={toggleSave}
                       costReportsByCcn={costReportsByCcn}
+                      onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
                     />
                   ) : (
                     <>
@@ -514,6 +515,7 @@ export default function App() {
                         savedIds={savedIds}
                         onToggleSave={toggleSave}
                         costReportsByCcn={costReportsByCcn}
+                        onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
                       />
                     </>
                   )}

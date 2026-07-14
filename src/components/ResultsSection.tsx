@@ -10,13 +10,15 @@ export function ResultsSection({
   items,
   savedIds,
   onToggleSave,
-  costReportsByCcn
+  costReportsByCcn,
+  onCompare
 }: {
   title?: string
   items: FacilityWithDistance<FacilityRecord>[]
   savedIds: Set<string>
   onToggleSave: (facility: FacilityRecord) => void
   costReportsByCcn?: Map<string, FacilityYearRecord[]>
+  onCompare?: (facility: FacilityRecord, distanceMiles: number) => void
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('distance')
   const [asc, setAsc] = useState(true)
@@ -95,6 +97,7 @@ export function ResultsSection({
                 saved={savedIds.has(`${facility.kind}:${facility.ccn}`)}
                 onToggleSave={() => onToggleSave(facility)}
                 costReportRecords={costReportsByCcn?.get(facility.ccn)}
+                onCompare={onCompare ? () => onCompare(facility, distanceMiles) : undefined}
               />
             ))}
           </div>

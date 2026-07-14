@@ -58,11 +58,33 @@ function Column({
           </dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-xs text-slate-400">Rating</dt>
+          <dt className="text-xs text-slate-400">Overall</dt>
           <dd>
             <StarRating rating={facility.overallRating} />
           </dd>
         </div>
+        {facility.kind === 'snf' && (
+          <>
+            <div className="flex items-center justify-between">
+              <dt className="text-xs text-slate-400">Health insp.</dt>
+              <dd>
+                <StarRating rating={facility.healthInspectionRating} />
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-xs text-slate-400">Staffing</dt>
+              <dd>
+                <StarRating rating={facility.staffingRating} />
+              </dd>
+            </div>
+            <div className="flex items-center justify-between">
+              <dt className="text-xs text-slate-400">Quality</dt>
+              <dd>
+                <StarRating rating={facility.qualityMeasureRating} />
+              </dd>
+            </div>
+          </>
+        )}
       </dl>
     </div>
   )
