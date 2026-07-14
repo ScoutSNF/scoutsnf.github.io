@@ -65,16 +65,38 @@ async function fetchAllRowsViaQueryApi(datasetId: string, label: string, onRetry
 
 /** Fetches a full CMS dataset as a normalized table: CSV bulk pull first, JSON pagination as fallback. */
 export async function fetchCmsDatasetTable(datasetId: string, label: string, onRetry?: OnRetry): Promise<CsvTable> {
+  let csvTable: CsvTable | null = null
   try {
     const csvUrl = await resolveCsvDownloadUrl(datasetId, label, onRetry)
     if (csvUrl) {
       const res = await fetchWithRetry(csvUrl, `${label} CSV`, undefined, { onRetry })
       const text = await res.text()
       const table = parseCsvTable(text)
-      if (table.rows.length > 0) return table
+      if (table.rows.length > 0) csvTable = table
     }
   } catch {
-    // fall through to JSON pagination
+    // fall through to the datastore query API below
   }
-  return fetchAllRowsViaQueryApi(datasetId, label, onRetry)
+
+  if (!csvTable) return fetchAllRowsViaQueryApi(datasetId, label, onRetry)
+
+  // The CSV distribution CMS attaches to a dataset's metadata isn't guaranteed to be
+  // the full, current file — it can be stale or a smaller sample, and still "succeeds"
+  // above since it's non-empty. Cheaply sanity-check its row count against a single
+  // page of the live datastore query API before trusting it: if even one page already
+  // has more rows than the whole CSV claims to, the CSV is truncated.
+  try {
+    const probeRes = await fetchWithRetry(
+      `${CMS_DATASTORE_QUERY_URL(datasetId)}?limit=5000&offset=0`,
+      `${label} data`,
+      undefined,
+      { onRetry }
+    )
+    const probeJson = (await probeRes.json()) as { results?: Record<string, unknown>[] }
+    const probeCount = probeJson.results?.length ?? 0
+    if (probeCount > csvTable.rows.length) return fetchAllRowsViaQueryApi(datasetId, label, onRetry)
+  } catch {
+    // Probe failed — trust the CSV we already have rather than losing it.
+  }
+  return csvTable
 }
