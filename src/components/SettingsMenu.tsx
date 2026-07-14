@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BEDS_ERROR_KEY } from '../data/dataset'
+import { BEDS_ERROR_KEY, SNF_ROSTER_ERROR_KEY, HOSPITAL_ROSTER_ERROR_KEY } from '../data/dataset'
 
 export function SettingsMenu({
   snfFetchedAt,
@@ -20,10 +20,14 @@ export function SettingsMenu({
   const [recheckProgress, setRecheckProgress] = useState<{ done: number; total: number } | null>(null)
   const [recheckCount, setRecheckCount] = useState<number | null>(null)
   const [bedsError, setBedsError] = useState<string | null>(null)
+  const [snfRosterError, setSnfRosterError] = useState<string | null>(null)
+  const [hospitalRosterError, setHospitalRosterError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
     setBedsError(localStorage.getItem(BEDS_ERROR_KEY))
+    setSnfRosterError(localStorage.getItem(SNF_ROSTER_ERROR_KEY))
+    setHospitalRosterError(localStorage.getItem(HOSPITAL_ROSTER_ERROR_KEY))
     function onClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
@@ -68,7 +72,13 @@ export function SettingsMenu({
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Data</p>
           <div className="mb-3 space-y-1 text-xs text-slate-500 dark:text-slate-400">
             <div>SNF roster: {snfFetchedAt ? new Date(snfFetchedAt).toLocaleString() : 'unknown'}</div>
+            {snfRosterError && (
+              <div className="text-red-600 dark:text-red-400">SNF roster refresh failed: {snfRosterError}</div>
+            )}
             <div>Hospital roster: {hospitalFetchedAt ? new Date(hospitalFetchedAt).toLocaleString() : 'unknown'}</div>
+            {hospitalRosterError && (
+              <div className="text-red-600 dark:text-red-400">Hospital roster refresh failed: {hospitalRosterError}</div>
+            )}
             {bedsError && (
               <div className="text-red-600 dark:text-red-400">Hospital bed data: {bedsError}</div>
             )}

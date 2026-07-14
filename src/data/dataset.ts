@@ -15,6 +15,12 @@ export interface LoadResult<T> {
 const SNF_META_KEY = 'snf'
 const HOSPITAL_META_KEY = 'hospital'
 export const BEDS_ERROR_KEY = 'scoutsnf:bedsError'
+export const SNF_ROSTER_ERROR_KEY = 'scoutsnf:snfRosterError'
+export const HOSPITAL_ROSTER_ERROR_KEY = 'scoutsnf:hospitalRosterError'
+
+function rosterErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof SourceFetchError || err instanceof Error ? err.message : fallback
+}
 
 /**
  * CMS's own coordinates for a meaningful subset of SNFs turn out to be identical
@@ -117,12 +123,16 @@ export async function loadSnfData(
       await db.snf.bulkPut(fresh)
     })
     await setMeta(SNF_META_KEY)
+    localStorage.removeItem(SNF_ROSTER_ERROR_KEY)
     return { records: fresh, fetchedAt: new Date().toISOString(), error: null }
   } catch (err) {
+    const message = rosterErrorMessage(err, 'SNF roster unavailable — retry')
     if (cached.length > 0) {
+      // Falling back to cache hides this from the user everywhere except Settings —
+      // without it, a refresh that silently fails looks identical to one that succeeded.
+      localStorage.setItem(SNF_ROSTER_ERROR_KEY, `${new Date().toLocaleString()} — ${message}`)
       return { records: cached, fetchedAt: meta?.fetchedAt ?? '', error: null }
     }
-    const message = err instanceof SourceFetchError ? err.message : 'SNF roster unavailable — retry'
     return { records: [], fetchedAt: '', error: message }
   }
 }
@@ -197,12 +207,16 @@ export async function loadHospitalData(
       await db.hospitals.bulkPut(roster)
     })
     await setMeta(HOSPITAL_META_KEY)
+    localStorage.removeItem(HOSPITAL_ROSTER_ERROR_KEY)
     return { records: roster, fetchedAt: new Date().toISOString(), error: null }
   } catch (err) {
+    const message = rosterErrorMessage(err, 'Hospital roster unavailable — retry')
     if (cached.length > 0) {
+      // Falling back to cache hides this from the user everywhere except Settings —
+      // without it, a refresh that silently fails looks identical to one that succeeded.
+      localStorage.setItem(HOSPITAL_ROSTER_ERROR_KEY, `${new Date().toLocaleString()} — ${message}`)
       return { records: cached, fetchedAt: meta?.fetchedAt ?? '', error: null }
     }
-    const message = err instanceof SourceFetchError ? err.message : 'Hospital roster unavailable — retry'
     return { records: [], fetchedAt: '', error: message }
   }
 }
