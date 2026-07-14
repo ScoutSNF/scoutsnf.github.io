@@ -296,7 +296,7 @@ export function PortfolioReport({
                         <TypeBadge facility={m.facility} />
                       </div>
                       <div className="text-xs text-slate-500 dark:text-slate-400">
-                        {m.row.city}, {m.row.state} · saved radius {m.row.radiusMiles} mi
+                        {m.row.city}, {m.row.state}
                       </div>
                     </button>
                     <div className="flex shrink-0 items-center gap-3 text-xs text-slate-600 dark:text-slate-300">

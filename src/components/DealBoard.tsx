@@ -150,7 +150,7 @@ export function DealBoard({
                       {facility && <TypeBadge facility={facility} />}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {row.city}, {row.state} · saved radius {row.radiusMiles} mi
+                      {row.city}, {row.state}
                     </div>
                   </button>
                   <div className="flex shrink-0 flex-col items-end gap-1">
