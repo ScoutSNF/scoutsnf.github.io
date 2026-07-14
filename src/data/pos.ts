@@ -79,7 +79,10 @@ async function findPosDatasetUuid(): Promise<string> {
 
 async function fetchBedsViaDataJson(): Promise<Map<string, number>> {
   const uuid = await findPosDatasetUuid()
-  const pageSize = 5000
+  // CMS's datastore query API rejects overly-large `limit`/`size` values with a flat 400
+  // Bad Request rather than silently capping them (confirmed in production for the sibling
+  // provider-data query API in dkan.ts) — keep this conservative for the same reason.
+  const pageSize = 500
   let offset = 0
   const beds = new Map<string, number>()
   let headers: string[] | null = null

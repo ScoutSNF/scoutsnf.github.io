@@ -31,9 +31,15 @@ export async function resolveCsvDownloadUrl(datasetId: string, label: string, on
   return distributions[0]?.downloadURL ?? distributions[0]?.data?.downloadURL ?? null
 }
 
+// CMS's datastore query API rejects `limit` values above some undocumented cap with a
+// flat 400 Bad Request (confirmed in production) rather than silently capping the page —
+// so a too-large page size fails outright instead of just returning fewer rows. 500 is a
+// conservative value well under any commonly-documented CKAN/DKAN datastore limit.
+const QUERY_API_PAGE_SIZE = 500
+
 /** Paginated fallback via the datastore query JSON API, used if the CSV bulk pull fails. */
 async function fetchAllRowsViaQueryApi(datasetId: string, label: string, onRetry?: OnRetry): Promise<CsvTable> {
-  const pageSize = 5000
+  const pageSize = QUERY_API_PAGE_SIZE
   let offset = 0
   const allRows: Record<string, unknown>[] = []
   // eslint-disable-next-line no-constant-condition
@@ -87,7 +93,7 @@ export async function fetchCmsDatasetTable(datasetId: string, label: string, onR
   // has more rows than the whole CSV claims to, the CSV is truncated.
   try {
     const probeRes = await fetchWithRetry(
-      `${CMS_DATASTORE_QUERY_URL(datasetId)}?limit=5000&offset=0`,
+      `${CMS_DATASTORE_QUERY_URL(datasetId)}?limit=${QUERY_API_PAGE_SIZE}&offset=0`,
       `${label} data`,
       undefined,
       { onRetry }
