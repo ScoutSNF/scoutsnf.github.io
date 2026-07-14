@@ -181,8 +181,9 @@ export async function loadHospitalData(
         const bedCount = beds.get(h.ccn)
         if (bedCount != null) h.certifiedBeds = bedCount
       }
-    } catch {
+    } catch (err) {
       // bed counts stay null; surfaced as "Not available" in UI rather than failing the whole roster
+      console.warn('[dataset] hospital bed count fetch failed', err)
     }
 
     await db.transaction('rw', db.hospitals, db.meta, async () => {
