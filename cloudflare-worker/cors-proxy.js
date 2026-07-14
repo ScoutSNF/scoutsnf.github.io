@@ -43,11 +43,17 @@ export default {
       return new Response('Forbidden', { status: 403 })
     }
 
-    const init = { method: request.method }
+    const init = { method: request.method, headers: {} }
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       init.body = await request.arrayBuffer()
       const contentType = request.headers.get('Content-Type')
-      if (contentType) init.headers = { 'Content-Type': contentType }
+      if (contentType) init.headers['Content-Type'] = contentType
+    }
+    if (targetHost === 'nominatim.openstreetmap.org') {
+      // Nominatim's usage policy requires every request to identify itself with a
+      // valid User-Agent (and ideally a contact) — unidentified traffic is blocked
+      // outright with "Access denied". See https://operations.osmfoundation.org/policies/nominatim/
+      init.headers['User-Agent'] = 'ScoutSNF/1.0 (+https://scoutsnf.github.io; contact: shalomalizakatz@gmail.com)'
     }
 
     const upstream = await fetch(targetUrl, init)
