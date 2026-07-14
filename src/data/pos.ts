@@ -90,8 +90,10 @@ async function fetchBedsViaDataJson(): Promise<Map<string, number>> {
       }
     }
 
-    if (page.length < pageSize) break
-    offset += pageSize
+    // Advance by the page actually received, not the requested size — the API
+    // can silently cap its response below the requested size, and incrementing
+    // by the requested amount would skip straight past the untransferred rows.
+    offset += page.length
     if (offset > 100_000) break // safety cap
   }
   return beds

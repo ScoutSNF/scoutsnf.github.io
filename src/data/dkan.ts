@@ -46,10 +46,13 @@ async function fetchAllRowsViaQueryApi(datasetId: string, label: string, onRetry
     )
     const json = (await res.json()) as { results?: Record<string, unknown>[] }
     const page = json.results ?? []
+    if (page.length === 0) break
     allRows.push(...page)
-    if (page.length < pageSize) break
-    offset += pageSize
-    if (offset > 200_000) break // safety cap
+    // Advance by the page actually received, not the requested limit — the API
+    // can silently cap its response below the requested limit, and incrementing
+    // by the requested amount would skip straight past the untransferred rows.
+    offset += page.length
+    if (allRows.length > 200_000) break // safety cap
   }
   const headers = allRows.length > 0 ? Object.keys(allRows[0]) : []
   const rows = allRows.map((r) => headers.map((h) => String(r[h] ?? '')))
