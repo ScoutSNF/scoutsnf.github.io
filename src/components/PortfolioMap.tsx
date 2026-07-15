@@ -61,15 +61,16 @@ export function PortfolioMap({
       }).addTo(layer)
     }
 
-    // Portfolio-owned facilities always render highlighted (teal + gold ring), same treatment
-    // the search map gives the anchor/compared pin — the selected one just gets a size bump.
+    // Every portfolio facility renders teal (vs. blue SNF/red hospital competitors), but only the
+    // selected one gets the gold-ring "highlighted" treatment — otherwise all portfolio pins look
+    // identical at a wide zoom and the selected one is impossible to pick out.
     for (const m of members) {
       if (m.facility.latitude == null || m.facility.longitude == null) continue
       const id = `${m.facility.kind}:${m.facility.ccn}`
       const isSelected = id === selectedId
       bounds.push([m.facility.latitude, m.facility.longitude])
       const marker = L.marker([m.facility.latitude, m.facility.longitude], {
-        icon: dotIcon(MAP_COLORS.anchor, isSelected ? 16 : 12, true),
+        icon: dotIcon(MAP_COLORS.anchor, 12, isSelected),
         zIndexOffset: isSelected ? 1000 : 500
       }).addTo(layer)
       marker.bindPopup(`<strong>${m.row.name}</strong><br/>Portfolio facility${isSelected ? ' (selected)' : ''}`)
