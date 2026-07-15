@@ -52,6 +52,7 @@ export function PortfolioReport({
   const [clusterThreshold, setClusterThreshold] = useState(() => readStoredNumber(CLUSTER_THRESHOLD_KEY, 25))
   const [competitorRadius, setCompetitorRadius] = useState(() => readStoredNumber(COMPETITOR_RADIUS_KEY, 15))
   const [drilldownId, setDrilldownId] = useState<string | null>(null)
+  const [membersExpanded, setMembersExpanded] = useState(false)
 
   function changeClusterThreshold(v: number) {
     setClusterThreshold(v)
@@ -290,8 +291,15 @@ export function PortfolioReport({
           {tab === 'list' && (
             <>
               <section className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                <h2 className="mb-2 text-sm font-semibold">Facilities in this portfolio</h2>
-                <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
+                <button
+                  onClick={() => setMembersExpanded((v) => !v)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <h2 className="text-sm font-semibold">Facilities in this portfolio ({data.members.length})</h2>
+                  <span className="text-xs text-sky-600 dark:text-sky-400">{membersExpanded ? 'Hide' : 'Show all'}</span>
+                </button>
+                {membersExpanded && (
+                <div className="mt-2 flex flex-col divide-y divide-slate-100 dark:divide-slate-800">
                   {data.members.map((m) => (
                     <PortfolioMemberRow
                       key={m.row.id}
@@ -309,6 +317,7 @@ export function PortfolioReport({
                     />
                   ))}
                 </div>
+                )}
               </section>
 
               {soleMember ? (
