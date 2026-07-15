@@ -12,6 +12,7 @@ import { ClusterSettingsRow, CLUSTER_THRESHOLD_OPTIONS } from './ClusterSettings
 import { StandaloneRow } from './StandaloneRow'
 import { PortfolioAnchorDrillDown } from './PortfolioAnchorDrillDown'
 import { PortfolioMemberRow } from './PortfolioMemberRow'
+import { CompareCard } from './CompareCard'
 
 const CLUSTER_THRESHOLD_KEY = 'scoutsnf:portfolioClusterThreshold'
 const COMPETITOR_RADIUS_KEY = 'scoutsnf:portfolioCompetitorRadius'
@@ -53,6 +54,7 @@ export function PortfolioReport({
   const [competitorRadius, setCompetitorRadius] = useState(() => readStoredNumber(COMPETITOR_RADIUS_KEY, 15))
   const [drilldownId, setDrilldownId] = useState<string | null>(null)
   const [membersExpanded, setMembersExpanded] = useState(false)
+  const [mapCompareTarget, setMapCompareTarget] = useState<{ facility: FacilityRecord; distanceMiles: number } | null>(null)
 
   function changeClusterThreshold(v: number) {
     setClusterThreshold(v)
@@ -79,6 +81,7 @@ export function PortfolioReport({
   // facility's saved radius but doesn't overwrite it unless the user explicitly saves again.
   useEffect(() => {
     setRadiusOverride(null)
+    setMapCompareTarget(null)
   }, [selectedId])
   const effectiveRadius = radiusOverride ?? selectedMember?.row.radiusMiles ?? 10
 
@@ -217,6 +220,17 @@ export function PortfolioReport({
                     facilityCount={liveCompetitors.length + liveHospitals.length}
                   />
 
+                  {mapCompareTarget && (
+                    <CompareCard
+                      anchor={selectedMember.facility}
+                      facility={mapCompareTarget.facility}
+                      distanceMiles={mapCompareTarget.distanceMiles}
+                      savedIds={savedIds}
+                      onToggleSave={onToggleSave}
+                      onClose={() => setMapCompareTarget(null)}
+                    />
+                  )}
+
                   <div className="h-[420px]">
                     <PortfolioMap
                       members={data.members}
@@ -225,6 +239,7 @@ export function PortfolioReport({
                       competitors={mapCompetitors}
                       hospitals={mapHospitals}
                       onSelect={setSelectedId}
+                      onCompare={(facility, distanceMiles) => setMapCompareTarget({ facility, distanceMiles })}
                     />
                   </div>
 

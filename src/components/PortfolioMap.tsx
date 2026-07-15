@@ -10,7 +10,8 @@ export function PortfolioMap({
   radiusMiles,
   competitors,
   hospitals,
-  onSelect
+  onSelect,
+  onCompare
 }: {
   members: PortfolioMemberResolved[]
   selectedId: string | null
@@ -18,6 +19,7 @@ export function PortfolioMap({
   competitors: { facility: SnfRecord; distanceMiles: number }[]
   hospitals: { facility: HospitalRecord; distanceMiles: number }[]
   onSelect: (id: string) => void
+  onCompare?: (facility: SnfRecord | HospitalRecord, distanceMiles: number) => void
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -74,27 +76,38 @@ export function PortfolioMap({
       marker.on('click', () => onSelect(id))
     }
 
+    function bindComparePopup(marker: L.Marker, facility: SnfRecord | HospitalRecord, distanceMiles: number, anchorName: string) {
+      const popupDiv = document.createElement('div')
+      popupDiv.innerHTML = `<strong>${facility.name}</strong><br/>${distanceMiles} mi from ${anchorName}<br/>`
+      if (onCompare) {
+        const btn = document.createElement('button')
+        btn.textContent = 'Compare to anchor'
+        btn.style.cssText = 'color:#0f4c5c;text-decoration:underline;font-size:12px;background:none;border:none;padding:0;cursor:pointer'
+        btn.onclick = () => onCompare(facility, distanceMiles)
+        popupDiv.appendChild(btn)
+      }
+      marker.bindPopup(popupDiv)
+    }
+
     if (selectedMember) {
       for (const c of competitors) {
         if (c.facility.latitude == null || c.facility.longitude == null) continue
         bounds.push([c.facility.latitude, c.facility.longitude])
-        L.marker([c.facility.latitude, c.facility.longitude], { icon: dotIcon(MAP_COLORS.snf, 12, false) })
-          .bindPopup(`<strong>${c.facility.name}</strong><br/>${c.distanceMiles} mi from ${selectedMember.row.name}`)
-          .addTo(layer)
+        const marker = L.marker([c.facility.latitude, c.facility.longitude], { icon: dotIcon(MAP_COLORS.snf, 12, false) }).addTo(layer)
+        bindComparePopup(marker, c.facility, c.distanceMiles, selectedMember.row.name)
       }
       for (const h of hospitals) {
         if (h.facility.latitude == null || h.facility.longitude == null) continue
         bounds.push([h.facility.latitude, h.facility.longitude])
-        L.marker([h.facility.latitude, h.facility.longitude], { icon: dotIcon(MAP_COLORS.hospital, 12, false) })
-          .bindPopup(`<strong>${h.facility.name}</strong><br/>${h.distanceMiles} mi from ${selectedMember.row.name}`)
-          .addTo(layer)
+        const marker = L.marker([h.facility.latitude, h.facility.longitude], { icon: dotIcon(MAP_COLORS.hospital, 12, false) }).addTo(layer)
+        bindComparePopup(marker, h.facility, h.distanceMiles, selectedMember.row.name)
       }
     }
 
     if (bounds.length > 0) {
       map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: 13 })
     }
-  }, [members, selectedId, radiusMiles, competitors, hospitals, onSelect])
+  }, [members, selectedId, radiusMiles, competitors, hospitals, onSelect, onCompare])
 
   return <div ref={containerRef} className="h-full min-h-[400px] w-full rounded-xl" />
 }
