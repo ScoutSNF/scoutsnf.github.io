@@ -48,7 +48,17 @@ function findCoordinateCollisions(records: SnfRecord[]): SnfRecord[] {
   return collided
 }
 
-/** Mutates any colliding records in place with corrected coordinates. Returns how many were found. */
+/**
+ * Mutates any colliding records in place with corrected coordinates. Returns how many were found.
+ *
+ * The one-shot Census batch call reports done=total as soon as it returns, before we know how
+ * many actually matched -- the remaining misses then get looked up one at a time via Nominatim
+ * (required ~1/sec), which used to report nothing at all and made the progress counter look
+ * frozen for however long that took. Reporting progress only from here (not forwarding the
+ * batch call's own onProgress) keeps the counter strictly increasing: 0 while the single batch
+ * request is in flight, then climbing from however many matched up to `total` as each miss gets
+ * individually resolved.
+ */
 async function fixCoordinateCollisions(
   records: SnfRecord[],
   onProgress?: (done: number, total: number) => void
@@ -63,11 +73,14 @@ async function fixCoordinateCollisions(
     state: r.state,
     zip: r.zip
   }))
-  const geocoded = await geocodeBatch(inputs, onProgress)
+  onProgress?.(0, collided.length)
+  const geocoded = await geocodeBatch(inputs)
   const misses = inputs.filter((i) => !geocoded.has(i.id))
-  for (const miss of misses) {
-    const result = await geocodeSingleNominatim(miss)
-    if (result) geocoded.set(miss.id, result)
+  const matchedCount = collided.length - misses.length
+  for (let i = 0; i < misses.length; i++) {
+    const result = await geocodeSingleNominatim(misses[i])
+    if (result) geocoded.set(misses[i].id, result)
+    onProgress?.(matchedCount + i + 1, collided.length)
   }
 
   const byCcn = new Map(records.map((r) => [r.ccn, r]))
@@ -170,10 +183,15 @@ export async function loadHospitalData(
       const geocoded = await geocodeBatch(needsGeocode, (done, total) =>
         onProgress?.('geocoding', done, total)
       )
+      // Whatever the Census batch missed gets looked up one address at a time via Nominatim
+      // (required ~1/sec) -- this is its own reported phase so the counter keeps moving instead
+      // of sitting at "done=total" (from the batch call above) for however long this takes.
       const misses = needsGeocode.filter((n) => !geocoded.has(n.id))
-      for (const miss of misses) {
-        const result = await geocodeSingleNominatim(miss)
-        if (result) geocoded.set(miss.id, result)
+      if (misses.length > 0) onProgress?.('geocoding-fallback', 0, misses.length)
+      for (let i = 0; i < misses.length; i++) {
+        const result = await geocodeSingleNominatim(misses[i])
+        if (result) geocoded.set(misses[i].id, result)
+        onProgress?.('geocoding-fallback', i + 1, misses.length)
       }
       const byCcn = new Map(roster.map((h) => [h.ccn, h]))
       for (const [ccn, geo] of geocoded) {
@@ -219,6 +237,18 @@ export async function loadHospitalData(
     }
     return { records: [], fetchedAt: '', error: message }
   }
+}
+
+/** Reads whatever's cached without triggering any network fetch -- lets the caller show
+ * existing data immediately and decide separately whether a refresh is warranted. */
+export async function getCachedSnf(): Promise<{ records: SnfRecord[]; fetchedAt: string }> {
+  const [meta, records] = await Promise.all([getMeta(SNF_META_KEY), db.snf.toArray()])
+  return { records, fetchedAt: meta?.fetchedAt ?? '' }
+}
+
+export async function getCachedHospitals(): Promise<{ records: HospitalRecord[]; fetchedAt: string }> {
+  const [meta, records] = await Promise.all([getMeta(HOSPITAL_META_KEY), db.hospitals.toArray()])
+  return { records, fetchedAt: meta?.fetchedAt ?? '' }
 }
 
 export async function clearAllCaches(): Promise<void> {
