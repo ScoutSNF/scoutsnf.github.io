@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from './types/facility'
-import { loadSnfData, loadHospitalData, recheckSnfCoordinates } from './data/dataset'
+import { loadSnfData, loadHospitalData, recheckSnfCoordinates, getCachedSnf, getCachedHospitals } from './data/dataset'
 import { loadCostReports } from './data/costReports'
 import type { FacilityYearRecord } from './types/costReport'
 import { HOSPITAL_TYPES } from './lib/hospitalType'
@@ -45,6 +45,11 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [loadStage, setLoadStage] = useState('Loading SNF roster…')
   const [slowLoad, setSlowLoad] = useState(false)
+  /** True while a refresh runs quietly behind already-visible cached data (e.g. the
+   * automatic re-fetch once cached data turns a week old) rather than blocking the app
+   * behind the full-screen loading spinner. */
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshStage, setRefreshStage] = useState('')
   const [legendOpen, setLegendOpen] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
 
@@ -85,17 +90,36 @@ export default function App() {
   }
 
   async function loadAll(forceRefresh = false) {
-    setLoading(true)
+    // If we already have cached data and this isn't an explicit "Refresh data…" click, don't
+    // block the app behind the full-screen spinner for what's usually just a handful of new
+    // facilities (e.g. the automatic re-fetch once cached data turns a week old) -- show what's
+    // on hand immediately and let the refresh run quietly underneath it.
+    const [cachedSnf, cachedHospital] = await Promise.all([getCachedSnf(), getCachedHospitals()])
+    const hasCache = cachedSnf.records.length > 0 && cachedHospital.records.length > 0
+    const background = hasCache && !forceRefresh
+
+    if (background) {
+      setSnfs(cachedSnf.records)
+      setHospitals(cachedHospital.records)
+      setSnfFetchedAt(cachedSnf.fetchedAt)
+      setHospitalFetchedAt(cachedHospital.fetchedAt)
+      setLoading(false)
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+
     setErrors([])
     setLoadStage('Loading SNF roster…')
     const snfResult = await loadSnfData(forceRefresh, (stage, done, total) => {
-      setLoadStage(
+      const text =
         stage === 'collisions'
           ? `Verifying SNF coordinates… ${done}/${total}`
           : stage === 'roster-retry'
             ? `Loading SNF roster… connection is slow, retrying (${done}/${total})`
             : 'Loading SNF roster…'
-      )
+      setLoadStage(text)
+      setRefreshStage(text)
     })
     setSnfs(snfResult.records)
     setSnfFetchedAt(snfResult.fetchedAt)
@@ -103,19 +127,24 @@ export default function App() {
 
     setLoadStage('Loading hospital roster + geocoding…')
     const hospitalResult = await loadHospitalData(forceRefresh, (stage, done, total) => {
-      setLoadStage(
+      const text =
         stage === 'geocoding'
-          ? `Geocoding hospitals… ${done}/${total}`
-          : stage === 'roster-retry'
-            ? `Loading hospital roster… connection is slow, retrying (${done}/${total})`
-            : 'Fetching hospital bed counts…'
-      )
+          ? `Geocoding ${total} new hospital${total === 1 ? '' : 's'}… ${done}/${total}`
+          : stage === 'geocoding-fallback'
+            ? `Looking up ${total} unmatched hospital${total === 1 ? '' : 's'} individually… ${done}/${total}`
+            : stage === 'roster-retry'
+              ? `Loading hospital roster… connection is slow, retrying (${done}/${total})`
+              : 'Fetching hospital bed counts…'
+      setLoadStage(text)
+      setRefreshStage(text)
     })
     setHospitals(hospitalResult.records)
     setHospitalFetchedAt(hospitalResult.fetchedAt)
     if (hospitalResult.error) setErrors((e) => [...e, hospitalResult.error!])
 
     setLoading(false)
+    setRefreshing(false)
+    setRefreshStage('')
   }
 
   async function recheckCoordinates(onProgress?: (done: number, total: number) => void) {
@@ -262,13 +291,24 @@ export default function App() {
             <img src={`${import.meta.env.BASE_URL}brand/icon.svg`} alt="" className="h-8 w-8 rounded-lg" />
             <span className="text-lg font-bold">ScoutSNF</span>
           </div>
-          <SettingsMenu
-            snfFetchedAt={snfFetchedAt}
-            hospitalFetchedAt={hospitalFetchedAt}
-            onRefresh={() => void loadAll(true)}
-            onRecheckCoordinates={recheckCoordinates}
-            onOpenLegend={() => setLegendOpen(true)}
-          />
+          <div className="flex items-center gap-3">
+            {refreshing && (
+              <span
+                title={refreshStage || 'Updating data…'}
+                className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500"
+              >
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+                Updating…
+              </span>
+            )}
+            <SettingsMenu
+              snfFetchedAt={snfFetchedAt}
+              hospitalFetchedAt={hospitalFetchedAt}
+              onRefresh={() => void loadAll(true)}
+              onRecheckCoordinates={recheckCoordinates}
+              onOpenLegend={() => setLegendOpen(true)}
+            />
+          </div>
         </div>
         {errors.length > 0 && (
           <div className="mx-auto max-w-3xl px-4 pb-2">
