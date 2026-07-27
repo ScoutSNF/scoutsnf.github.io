@@ -54,6 +54,7 @@ export default function App() {
   const [errors, setErrors] = useState<string[]>([])
 
   const [saved, setSaved] = useState<SavedFacilityRow[]>([])
+  const [savedLoaded, setSavedLoaded] = useState(false)
   const [view, setView] = useState<View>('search')
   const [initialViewSet, setInitialViewSet] = useState(false)
 
@@ -155,7 +156,7 @@ export default function App() {
 
   useEffect(() => {
     void loadAll(false)
-    void refreshSaved()
+    void refreshSaved().then(() => setSavedLoaded(true))
     void refreshPortfolios()
     // Supplementary, not required for the app to function -- doesn't gate the main loading screen,
     // and quietly stays empty if the pipeline hasn't produced the file yet.
@@ -174,10 +175,13 @@ export default function App() {
   }, [loading])
 
   useEffect(() => {
-    if (initialViewSet || loading) return
+    // Gated on savedLoaded (not just `loading`) -- `loading` can now flip to false almost
+    // instantly on the cached, non-blocking-refresh path, racing ahead of the separate
+    // refreshSaved() call and defaulting to Search even when saved facilities exist.
+    if (initialViewSet || loading || !savedLoaded) return
     setView(saved.length > 0 ? 'board' : 'search')
     setInitialViewSet(true)
-  }, [loading, saved, initialViewSet])
+  }, [loading, saved, initialViewSet, savedLoaded])
 
   useEffect(() => {
     setCompareFacility(null)
@@ -331,6 +335,7 @@ export default function App() {
             snfs={snfs}
             hospitals={hospitals}
             savedIds={savedIds}
+            costReportsByCcn={costReportsByCcn}
             onToggleSave={toggleSave}
             onOpen={openFromBoard}
             onClose={() => setViewingPortfolioId(null)}
