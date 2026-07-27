@@ -43,24 +43,24 @@ export async function buildPortfolioWorkbook(
   // --- Summary sheet ---
   const summary = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] })
   applyPageSetup(summary)
-  summary.columns = [{ width: 38 }, { width: 18 }, { width: 8 }, { width: 9 }, { width: 12 }, { width: 9 }, { width: 15 }]
-  addTitle(summary, `Portfolio report: ${portfolio.name}`, 7)
+  summary.columns = [{ width: 38 }, { width: 18 }, { width: 8 }, { width: 9 }, { width: 12 }, { width: 9 }]
+  addTitle(summary, `Portfolio report: ${portfolio.name}`, 6)
   addSubtitle(
     summary,
     2,
     `Generated ${new Date().toLocaleString()} · ${data.members.length} facilit${data.members.length === 1 ? 'y' : 'ies'}${
       data.statesCovered.length > 0 ? ` · ${data.statesCovered.join(', ')}` : ''
     } · clusters at ${clusterThresholdMiles} mi, competitors within ${competitorRadiusMiles} mi`,
-    7
+    6
   )
 
   addTable(
     summary,
     4,
-    ['Name', 'City', 'State', 'Beds', 'Occupancy', 'Rating', 'Saved Radius (mi)'],
+    ['Name', 'City', 'State', 'Beds', 'Occupancy', 'Rating'],
     data.members.map((m) => {
       const occ = getOccupancyDisplay(m.facility)
-      return [m.row.name, m.row.city, m.row.state, getBedsDisplay(m.facility), occ.text, ratingValue(m.facility.overallRating), m.row.radiusMiles]
+      return [m.row.name, m.row.city, m.row.state, getBedsDisplay(m.facility), occ.text, ratingValue(m.facility.overallRating)]
     })
   )
 
