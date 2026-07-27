@@ -3,7 +3,7 @@ import type { PortfolioMemberResolved, PortfolioDistance } from './portfolioRepo
 import { withinRadius } from './market'
 
 /** Two portfolio facilities close enough to directly cannibalize each other's census. */
-const CANNIBALIZATION_THRESHOLD_MILES = 5
+export const CANNIBALIZATION_THRESHOLD_MILES = 5
 
 export interface CannibalizationPair {
   memberA: PortfolioMemberResolved

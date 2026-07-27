@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { PortfolioReportData } from '../lib/portfolioReport'
 import { portfolioMemberId, buildPortfolioClusters, type Cluster } from '../lib/portfolioClusters'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from '../types/facility'
+import type { FacilityYearRecord } from '../types/costReport'
 import { withinRadius } from '../lib/market'
 import { HOSPITAL_TYPES } from '../lib/hospitalType'
 import { PortfolioMap } from './PortfolioMap'
@@ -29,6 +30,7 @@ export function PortfolioReport({
   snfs,
   hospitals,
   savedIds,
+  costReportsByCcn,
   onToggleSave,
   onOpen,
   onClose,
@@ -39,6 +41,7 @@ export function PortfolioReport({
   snfs: SnfRecord[]
   hospitals: HospitalRecord[]
   savedIds: Set<string>
+  costReportsByCcn: Map<string, FacilityYearRecord[]>
   onToggleSave: (facility: FacilityRecord, radiusOverride?: number) => void
   onOpen: (facility: FacilityRecord, radiusMiles: number) => void
   onClose: () => void
@@ -148,7 +151,7 @@ export function PortfolioReport({
     setExporting(true)
     try {
       const { buildPortfolioWorkbook, downloadBlob } = await import('../lib/portfolioWorkbook')
-      const blob = await buildPortfolioWorkbook(portfolio, data, clusterResult, clusterThreshold, competitorRadius)
+      const blob = await buildPortfolioWorkbook(portfolio, data, clusterResult, clusterThreshold, competitorRadius, costReportsByCcn)
       downloadBlob(`${portfolio.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-report.xlsx`, blob)
     } finally {
       setExporting(false)
