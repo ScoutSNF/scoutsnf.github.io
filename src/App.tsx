@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from './types/facility'
 import { loadSnfData, loadHospitalData, recheckSnfCoordinates, getCachedSnf, getCachedHospitals } from './data/dataset'
 import { loadCostReports } from './data/costReports'
@@ -243,6 +243,12 @@ export default function App() {
     setRadiusMiles(savedRadius)
     setView('search')
   }
+
+  // Stable identity so MapView's marker-drawing effect doesn't rerun (and its now-separate
+  // recenter effect stays untouched by this) just because App re-rendered for an unrelated reason.
+  const handleMapSelect = useCallback((facility: FacilityRecord, distanceMiles: number) => {
+    setCompareFacility({ facility, distanceMiles })
+  }, [])
 
   async function handleCreatePortfolio(name: string) {
     await createPortfolio(name)
@@ -495,7 +501,7 @@ export default function App() {
                         radiusMiles={radiusMiles}
                         results={mapResults}
                         highlight={compareFacility?.facility}
-                        onSelect={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
+                        onSelect={handleMapSelect}
                       />
                     </div>
                   </>
