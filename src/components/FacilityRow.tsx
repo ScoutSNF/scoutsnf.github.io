@@ -8,6 +8,7 @@ import { BookmarkIcon } from './BookmarkIcon'
 import { InfoPopover } from './InfoPopover'
 import { useLazyPlaceInfo } from '../hooks/useLazyPlaceInfo'
 import { useOwnership } from '../hooks/useOwnership'
+import { OwnershipDropdown } from './OwnershipDropdown'
 import { getOccupancyDisplay, getBedsDisplay, googleMapsDirectionsUrl, googleSearchUrl } from '../lib/facilityDisplay'
 
 export function FacilityRow({
@@ -131,35 +132,7 @@ export function FacilityRow({
               </div>
             )}
             {facility.kind === 'snf' && (
-              <details className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <summary className="cursor-pointer select-none font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100">
-                  Owners{ownership && ownership.length > 0 ? ` (${ownership.length})` : ''}
-                </summary>
-                <div className="mt-1.5 flex flex-col gap-1 pl-1">
-                  {ownershipLoading && <span>Loading…</span>}
-                  {ownershipError && <span>Ownership data unavailable</span>}
-                  {ownership && ownership.length === 0 && <span>No ownership disclosure on file</span>}
-                  {ownership &&
-                    [...ownership]
-                      .sort((a, b) => {
-                        const pa = parseFloat(a.percentage)
-                        const pb = parseFloat(b.percentage)
-                        if (Number.isNaN(pa) && Number.isNaN(pb)) return 0
-                        if (Number.isNaN(pa)) return 1
-                        if (Number.isNaN(pb)) return -1
-                        return pb - pa
-                      })
-                      .map((o, i) => {
-                        const pct = /^\d/.test(o.percentage) ? o.percentage : 'N/A'
-                        return (
-                          <div key={i} className="flex items-baseline justify-between gap-2">
-                            <span className="text-slate-700 dark:text-slate-200">{o.ownerName}</span>
-                            <span className="shrink-0 tabular-nums">{pct}</span>
-                          </div>
-                        )
-                      })}
-                </div>
-              </details>
+              <OwnershipDropdown records={ownership} loading={ownershipLoading} error={ownershipError} />
             )}
             {facility.kind === 'hospital' && facility.emergencyServices != null && (
               <div className="mt-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">

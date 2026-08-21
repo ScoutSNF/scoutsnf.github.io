@@ -7,6 +7,8 @@ import { BookmarkIcon } from './BookmarkIcon'
 import { InfoPopover } from './InfoPopover'
 import type { LegendKey } from '../lib/legend'
 import { getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
+import { useOwnership } from '../hooks/useOwnership'
+import { OwnershipDropdown } from './OwnershipDropdown'
 
 export function AnchorCard({
   facility,
@@ -27,6 +29,7 @@ export function AnchorCard({
   const latestCostReport = costReportRecords && costReportRecords.length > 0 ? costReportRecords[costReportRecords.length - 1] : null
   const hospitalOccupancyText =
     facility.kind === 'hospital' && latestCostReport?.occupancyPct != null ? `${latestCostReport.occupancyPct}%` : occupancy.text
+  const { records: ownership, loading: ownershipLoading, error: ownershipError } = useOwnership(facility.ccn, facility.kind === 'snf')
 
   return (
     <div className="rounded-xl border-2 border-brand/40 bg-white p-4 shadow-sm dark:bg-slate-900">
@@ -88,6 +91,10 @@ export function AnchorCard({
           <InfoPopover legendKey="snf-sub-ratings" />
           {facility.processingDate && <span>Data as of {facility.processingDate}</span>}
         </div>
+      )}
+
+      {facility.kind === 'snf' && (
+        <OwnershipDropdown records={ownership} loading={ownershipLoading} error={ownershipError} />
       )}
     </div>
   )
