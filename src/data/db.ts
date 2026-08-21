@@ -17,6 +17,20 @@ export interface SavedFacilityRow extends SavedFacility {
   id: string // `${kind}:${ccn}`
 }
 
+export interface OwnershipRecord {
+  ownerName: string
+  ownerType: string
+  role: string
+  percentage: string
+  associationDate: string
+}
+
+export interface OwnershipCacheRow {
+  ccn: string
+  records: OwnershipRecord[]
+  fetchedAt: string
+}
+
 class MarketRadiusDb extends Dexie {
   snf!: Table<SnfRecord, string>
   hospitals!: Table<HospitalRecord, string>
@@ -25,6 +39,7 @@ class MarketRadiusDb extends Dexie {
   saved!: Table<SavedFacilityRow, string>
   portfolios!: Table<Portfolio, string>
   portfolioMembers!: Table<PortfolioMember, string>
+  ownership!: Table<OwnershipCacheRow, string>
 
   constructor() {
     super('scoutsnf')
@@ -50,6 +65,9 @@ class MarketRadiusDb extends Dexie {
     // and is no longer used anywhere in the app -- drop its cache table.
     this.version(3).stores({
       hhsState: null
+    })
+    this.version(4).stores({
+      ownership: 'ccn'
     })
   }
 }

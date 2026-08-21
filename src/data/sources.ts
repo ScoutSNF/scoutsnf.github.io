@@ -20,6 +20,15 @@ export const CMS_DATA_API_DATASET_URL = (uuid: string) =>
  */
 export const CMS_POS_HOSPITAL_DATASET_UUID = '8ba0f9b4-9493-4aa0-9f82-44ea9468d1b5'
 
+/**
+ * "Ownership" — SNF owner/manager disclosure (name, role, ownership %), confirmed directly
+ * against the live CMS Provider Data Catalog metastore (title search for "ownership" returns
+ * exactly this one dataset) and cross-checked row-for-row against Highland Care Center's real
+ * medicare.gov ownership page. Unlike the POS dataset, this one *is* discoverable by title, but
+ * it's hardcoded anyway since it's looked up once here rather than per-request.
+ */
+export const CMS_OWNERSHIP_DATASET_ID = 'y2hd-n93e'
+
 export const CENSUS_GEOCODE_SINGLE_URL = (addr: string) =>
   `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(
     addr
