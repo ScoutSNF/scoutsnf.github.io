@@ -308,6 +308,7 @@ export function PortfolioReport({
                     items={combinedResults}
                     savedIds={savedIds}
                     onToggleSave={(facility) => onToggleSave(facility, effectiveRadius)}
+                    onViewOnMap={handleMapCompare}
                   />
                 </>
               )}

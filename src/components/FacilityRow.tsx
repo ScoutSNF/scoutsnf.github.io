@@ -15,7 +15,8 @@ export function FacilityRow({
   saved,
   onToggleSave,
   costReportRecords,
-  onCompare
+  onCompare,
+  onViewOnMap
 }: {
   facility: FacilityRecord
   distanceMiles: number
@@ -23,6 +24,8 @@ export function FacilityRow({
   onToggleSave: () => void
   costReportRecords?: FacilityYearRecord[]
   onCompare?: () => void
+  /** Highlights this facility on ScoutSNF's own map, distinct from the external "Open in Google Maps" link below. */
+  onViewOnMap?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const { ref, info } = useLazyPlaceInfo(facility.ccn, facility.name, facility.city, facility.state)
@@ -132,6 +135,11 @@ export function FacilityRow({
               {onCompare && (
                 <button onClick={onCompare} className="text-sky-600 hover:underline dark:text-sky-400">
                   Compare to anchor
+                </button>
+              )}
+              {onViewOnMap && (
+                <button onClick={onViewOnMap} className="text-sky-600 hover:underline dark:text-sky-400">
+                  View on map
                 </button>
               )}
               {info?.website ? (
