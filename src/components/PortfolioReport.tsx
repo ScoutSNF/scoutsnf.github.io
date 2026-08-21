@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PortfolioReportData } from '../lib/portfolioReport'
 import { portfolioMemberId, buildPortfolioClusters, type Cluster } from '../lib/portfolioClusters'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from '../types/facility'
@@ -145,6 +145,13 @@ export function PortfolioReport({
   const soleMember = data.members.length === 1 ? data.members[0] : null
   const nextLargerThreshold = CLUSTER_THRESHOLD_OPTIONS.find((t) => t > clusterThreshold) ?? null
 
+  // Stable identity so PortfolioMap's marker-drawing effect doesn't rerun (and its now-separate
+  // fit-bounds effect stays untouched by this) just because PortfolioReport re-rendered for an
+  // unrelated reason -- that used to snap the map's zoom back out on essentially any interaction.
+  const handleMapCompare = useCallback((facility: FacilityRecord, distanceMiles: number) => {
+    setMapCompareTarget({ facility, distanceMiles })
+  }, [])
+
   const [exporting, setExporting] = useState(false)
 
   async function exportReport() {
@@ -242,7 +249,7 @@ export function PortfolioReport({
                       competitors={mapCompetitors}
                       hospitals={mapHospitals}
                       onSelect={setSelectedId}
-                      onCompare={(facility, distanceMiles) => setMapCompareTarget({ facility, distanceMiles })}
+                      onCompare={handleMapCompare}
                       highlight={mapCompareTarget?.facility ?? null}
                     />
                   </div>

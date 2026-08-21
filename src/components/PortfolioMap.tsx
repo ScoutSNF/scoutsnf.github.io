@@ -137,10 +137,33 @@ export function PortfolioMap({
       }
     }
 
+  }, [members, selectedId, radiusMiles, competitors, hospitals, onSelect, onCompare, highlight])
+
+  // Fitting the view is split into its own effect, deliberately narrower than the marker-drawing
+  // one above: it should only run when the selected facility, the portfolio's membership, or the
+  // live radius/results actually change -- not on every redraw (e.g. clicking "Compare to anchor"
+  // changing `highlight`, or `onCompare`'s inline identity churning) -- otherwise it fights the
+  // user's own zoom/pan on every unrelated re-render.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const selectedMember = members.find((m) => `${m.facility.kind}:${m.facility.ccn}` === selectedId)
+    const bounds: L.LatLngExpression[] = []
+    for (const m of members) {
+      if (m.facility.latitude != null && m.facility.longitude != null) bounds.push([m.facility.latitude, m.facility.longitude])
+    }
+    if (selectedMember) {
+      for (const c of competitors) {
+        if (c.facility.latitude != null && c.facility.longitude != null) bounds.push([c.facility.latitude, c.facility.longitude])
+      }
+      for (const h of hospitals) {
+        if (h.facility.latitude != null && h.facility.longitude != null) bounds.push([h.facility.latitude, h.facility.longitude])
+      }
+    }
     if (bounds.length > 0) {
       map.fitBounds(L.latLngBounds(bounds), { padding: [30, 30], maxZoom: 13 })
     }
-  }, [members, selectedId, radiusMiles, competitors, hospitals, onSelect, onCompare, highlight])
+  }, [members, selectedId, radiusMiles, competitors, hospitals])
 
   return <div ref={containerRef} className="h-full min-h-[400px] w-full rounded-xl" />
 }

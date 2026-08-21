@@ -82,9 +82,17 @@ export function MapView({
       popupDiv.appendChild(btn)
       marker.bindPopup(popupDiv)
     }
-
-    map.setView([anchor.latitude, anchor.longitude], radiusMiles <= 15 ? 11 : radiusMiles <= 25 ? 10 : 9)
   }, [anchor, radiusMiles, results, highlight, onSelect])
+
+  // Recentering is split into its own effect, deliberately narrower than the marker-drawing one
+  // above: it should only run when the anchor or radius actually changes, not on every redraw
+  // (e.g. a "Compare" click changing `highlight`, or `onSelect`'s inline identity churning) --
+  // otherwise it fights the user's own zoom/pan on every unrelated re-render.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || anchor.latitude == null || anchor.longitude == null) return
+    map.setView([anchor.latitude, anchor.longitude], radiusMiles <= 15 ? 11 : radiusMiles <= 25 ? 10 : 9)
+  }, [anchor, radiusMiles])
 
   return <div ref={containerRef} className="h-full min-h-[400px] w-full rounded-xl" />
 }
