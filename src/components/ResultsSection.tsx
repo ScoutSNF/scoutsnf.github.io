@@ -11,7 +11,8 @@ export function ResultsSection({
   savedIds,
   onToggleSave,
   costReportsByCcn,
-  onCompare
+  onCompare,
+  onViewOnMap
 }: {
   title?: string
   items: FacilityWithDistance<FacilityRecord>[]
@@ -19,12 +20,20 @@ export function ResultsSection({
   onToggleSave: (facility: FacilityRecord) => void
   costReportsByCcn?: Map<string, FacilityYearRecord[]>
   onCompare?: (facility: FacilityRecord, distanceMiles: number) => void
+  onViewOnMap?: (facility: FacilityRecord, distanceMiles: number) => void
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('distance')
   const [asc, setAsc] = useState(true)
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return items
+    return items.filter(({ facility }) => facility.name.toLowerCase().includes(q))
+  }, [items, search])
 
   const sorted = useMemo(() => {
-    const copy = [...items]
+    const copy = [...filtered]
     copy.sort((a, b) => {
       let diff = 0
       switch (sortKey) {
@@ -47,7 +56,7 @@ export function ResultsSection({
       return asc ? diff : -diff
     })
     return copy
-  }, [items, sortKey, asc])
+  }, [filtered, sortKey, asc])
 
   function handleSort(key: SortKey) {
     if (key === sortKey) setAsc((v) => !v)
@@ -79,6 +88,15 @@ export function ResultsSection({
         <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">None within this radius</p>
       ) : (
         <>
+          <div className="border-b border-slate-100 px-3 py-2 dark:border-slate-800">
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search these results by name…"
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:border-brand focus:outline-none dark:border-slate-700 dark:bg-slate-900"
+            />
+          </div>
           <div className="grid grid-cols-[1.5rem_minmax(0,1fr)_2.1rem_1.6rem_2.9rem_2.9rem_1rem] items-center gap-1 border-b border-slate-100 px-1.5 py-1.5 dark:border-slate-800 sm:grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] sm:gap-3 sm:px-3">
             <span />
             {sortBtn('name', 'Name')}
@@ -88,19 +106,24 @@ export function ResultsSection({
             {sortBtn('rating', 'Rating', 'text-right')}
             <span />
           </div>
-          <div>
-            {sorted.map(({ facility, distanceMiles }) => (
-              <FacilityRow
-                key={facility.ccn}
-                facility={facility}
-                distanceMiles={distanceMiles}
-                saved={savedIds.has(`${facility.kind}:${facility.ccn}`)}
-                onToggleSave={() => onToggleSave(facility)}
-                costReportRecords={costReportsByCcn?.get(facility.ccn)}
-                onCompare={onCompare ? () => onCompare(facility, distanceMiles) : undefined}
-              />
-            ))}
-          </div>
+          {sorted.length === 0 ? (
+            <p className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">No matches for "{search}"</p>
+          ) : (
+            <div>
+              {sorted.map(({ facility, distanceMiles }) => (
+                <FacilityRow
+                  key={facility.ccn}
+                  facility={facility}
+                  distanceMiles={distanceMiles}
+                  saved={savedIds.has(`${facility.kind}:${facility.ccn}`)}
+                  onToggleSave={() => onToggleSave(facility)}
+                  costReportRecords={costReportsByCcn?.get(facility.ccn)}
+                  onCompare={onCompare ? () => onCompare(facility, distanceMiles) : undefined}
+                  onViewOnMap={onViewOnMap ? () => onViewOnMap(facility, distanceMiles) : undefined}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </section>

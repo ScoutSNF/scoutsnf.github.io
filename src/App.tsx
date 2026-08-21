@@ -250,6 +250,13 @@ export default function App() {
     setCompareFacility({ facility, distanceMiles })
   }, [])
 
+  // From a list row's "View on map" -- highlights the facility (same treatment as comparing it)
+  // and jumps to the Map tab, distinct from that row's separate "Open in Google Maps" link.
+  const handleViewOnMap = useCallback((facility: FacilityRecord, distanceMiles: number) => {
+    setCompareFacility({ facility, distanceMiles })
+    setTab('map')
+  }, [])
+
   async function handleCreatePortfolio(name: string) {
     await createPortfolio(name)
     await refreshPortfolios()
@@ -532,6 +539,7 @@ export default function App() {
                       onToggleSave={toggleSave}
                       costReportsByCcn={costReportsByCcn}
                       onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
+                      onViewOnMap={handleViewOnMap}
                     />
                   ) : (
                     <>
@@ -567,6 +575,7 @@ export default function App() {
                         onToggleSave={toggleSave}
                         costReportsByCcn={costReportsByCcn}
                         onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
+                        onViewOnMap={handleViewOnMap}
                       />
                     </>
                   )}
