@@ -15,6 +15,41 @@ function singleFacilityQueryUrl(ccn: string): string {
   return `${CMS_DATASTORE_QUERY_URL(CMS_OWNERSHIP_DATASET_ID)}?${params.toString()}`
 }
 
+function ownerNameQueryUrl(term: string): string {
+  const params = new URLSearchParams({
+    limit: '100',
+    offset: '0',
+    'conditions[0][property]': 'owner_name',
+    'conditions[0][value]': `%${term}%`,
+    'conditions[0][operator]': 'LIKE'
+  })
+  return `${CMS_DATASTORE_QUERY_URL(CMS_OWNERSHIP_DATASET_ID)}?${params.toString()}`
+}
+
+export interface OwnerSearchHit {
+  ccn: string
+  ownerName: string
+  role: string
+  percentage: string
+}
+
+/**
+ * Live national search across the CMS Ownership dataset by owner/manager/managing-partner name
+ * (individual or organization), case-insensitive substring match. Unlike fetchOwnership (one
+ * facility, cached indefinitely), this queries broadly by name and is never cached -- it isn't
+ * keyed to a single facility, and the caller is expected to debounce keystrokes.
+ */
+export async function searchOwnersByName(term: string): Promise<OwnerSearchHit[]> {
+  const res = await fetchWithRetry(ownerNameQueryUrl(term), 'Owner search', undefined, { attempts: 2 })
+  const json = (await res.json()) as { results?: Record<string, string>[] }
+  return (json.results ?? []).map((r) => ({
+    ccn: r.cms_certification_number_ccn ?? '',
+    ownerName: r.owner_name ?? '',
+    role: r.role_played_by_owner_or_manager_in_facility ?? '',
+    percentage: r.ownership_percentage ?? ''
+  }))
+}
+
 /**
  * Owners/managers for one SNF (name, role, ownership %), cached in IndexedDB by CCN so each
  * facility is only ever looked up once per browser. Fetched per-facility on demand (only once a
