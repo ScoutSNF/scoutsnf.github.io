@@ -18,7 +18,7 @@ function norm(s: string): string {
   return s.toLowerCase().trim()
 }
 
-function passesFilters(facility: FacilityRecord, filters: SearchFilters): boolean {
+export function passesFilters(facility: FacilityRecord, filters: SearchFilters): boolean {
   if (filters.state && facility.state !== filters.state) return false
   if (filters.kind && facility.kind !== filters.kind) return false
   if (filters.bedsMin != null && (facility.certifiedBeds == null || facility.certifiedBeds < filters.bedsMin)) return false

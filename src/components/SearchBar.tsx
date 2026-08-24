@@ -1,6 +1,14 @@
 import { useMemo, useState } from 'react'
 import type { FacilityRecord, SnfRecord, HospitalRecord, FacilityKind } from '../types/facility'
-import { searchFacilities } from '../lib/search'
+import { searchFacilities, passesFilters } from '../lib/search'
+import { useOwnerNameSearch } from '../hooks/useOwnerNameSearch'
+import { formatRole } from '../lib/ownershipDisplay'
+
+interface OwnerMatch {
+  facility: SnfRecord
+  ownerName: string
+  role: string
+}
 
 export function SearchBar({
   snfs,
@@ -20,8 +28,10 @@ export function SearchBar({
   const [bedsMin, setBedsMin] = useState('')
   const [bedsMax, setBedsMax] = useState('')
   const [sffOnly, setSffOnly] = useState(false)
+  const [ownerQuery, setOwnerQuery] = useState('')
 
   const states = useMemo(() => [...new Set([...snfs, ...hospitals].map((f) => f.state))].sort(), [snfs, hospitals])
+  const snfByCcn = useMemo(() => new Map(snfs.map((f) => [f.ccn, f])), [snfs])
 
   const filters = useMemo(
     () => ({
@@ -33,10 +43,32 @@ export function SearchBar({
     }),
     [stateFilter, kindFilter, bedsMin, bedsMax, sffOnly]
   )
-  const activeFilterCount = [stateFilter, kindFilter !== 'all', bedsMin, bedsMax, sffOnly].filter(Boolean).length
+  const activeFilterCount = [stateFilter, kindFilter !== 'all', bedsMin, bedsMax, sffOnly, ownerQuery].filter(Boolean).length
 
   const hits = useMemo(() => searchFacilities(query, snfs, hospitals, filters), [query, snfs, hospitals, filters])
-  const showResults = (focused || filtersOpen) && hits.length > 0
+
+  // Ownership is a SNF-only CMS dataset -- no point querying it while the Kind filter is narrowed
+  // to Hospital, or while the filters panel isn't even open to show a field for it.
+  const ownerSearchEnabled = filtersOpen && kindFilter !== 'hospital'
+  const { hits: ownerHitsRaw, loading: ownerLoading, error: ownerError } = useOwnerNameSearch(ownerQuery, ownerSearchEnabled)
+
+  const ownerMatches = useMemo(() => {
+    const byFacility = new Map<string, OwnerMatch>()
+    for (const hit of ownerHitsRaw) {
+      const facility = snfByCcn.get(hit.ccn)
+      if (!facility || !passesFilters(facility, filters)) continue
+      // A person/entity can hold multiple roles at one facility (e.g. an ownership stake and an
+      // officer title) -- keep the first (highest-percentage, per the API's default ordering) so
+      // one facility shows once per matching owner rather than once per role.
+      const key = `${hit.ccn}:${hit.ownerName}`
+      if (!byFacility.has(key)) byFacility.set(key, { facility, ownerName: hit.ownerName, role: hit.role })
+    }
+    return [...byFacility.values()]
+  }, [ownerHitsRaw, snfByCcn, filters])
+
+  const showResults =
+    (focused || filtersOpen) &&
+    (hits.length > 0 || ownerMatches.length > 0 || ownerLoading || (ownerSearchEnabled && ownerQuery.trim().length >= 3 && ownerError))
 
   function clearFilters() {
     setStateFilter('')
@@ -44,6 +76,13 @@ export function SearchBar({
     setBedsMin('')
     setBedsMax('')
     setSffOnly(false)
+    setOwnerQuery('')
+  }
+
+  function select(facility: FacilityRecord) {
+    onSelect(facility)
+    setQuery('')
+    setOwnerQuery('')
   }
 
   return (
@@ -102,7 +141,10 @@ export function SearchBar({
                     key={k}
                     onClick={() => {
                       setKindFilter(k)
-                      if (k === 'hospital') setSffOnly(false)
+                      if (k === 'hospital') {
+                        setSffOnly(false)
+                        setOwnerQuery('')
+                      }
                     }}
                     className={`flex-1 rounded px-1.5 py-1 text-xs ${
                       kindFilter === k ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-slate-100' : ''
@@ -136,6 +178,22 @@ export function SearchBar({
             </label>
           </div>
 
+          <label
+            className={`flex flex-col gap-1 text-xs ${
+              kindFilter === 'hospital' ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            Owner / manager / managing partner name
+            <input
+              type="text"
+              value={ownerQuery}
+              disabled={kindFilter === 'hospital'}
+              onChange={(e) => setOwnerQuery(e.target.value)}
+              placeholder="e.g. Einhorn, or 150 Riverside Management…"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
+            />
+          </label>
+
           <div className="flex items-center justify-between">
             <label
               className={`flex items-center gap-1.5 text-xs ${
@@ -161,15 +219,12 @@ export function SearchBar({
       )}
 
       {showResults && (
-        <ul className="absolute z-20 mt-1 max-h-80 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+        <ul className="absolute z-20 mt-1 max-h-96 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
           {hits.map(({ facility }) => (
             <li key={`${facility.kind}:${facility.ccn}`}>
               <button
                 className="flex w-full flex-col items-start px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
-                onMouseDown={() => {
-                  onSelect(facility)
-                  setQuery('')
-                }}
+                onMouseDown={() => select(facility)}
               >
                 <span className="font-medium">{facility.name}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
@@ -178,6 +233,38 @@ export function SearchBar({
               </button>
             </li>
           ))}
+
+          {ownerSearchEnabled && ownerQuery.trim().length >= 3 && (
+            <>
+              <li className="border-t border-slate-200 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                Owners matching “{ownerQuery.trim()}”
+              </li>
+              {ownerLoading && <li className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">Searching…</li>}
+              {ownerError && (
+                <li className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">Owner search unavailable — try again</li>
+              )}
+              {!ownerLoading && !ownerError && ownerMatches.length === 0 && (
+                <li className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">No matching owners found</li>
+              )}
+              {ownerMatches.map(({ facility, ownerName, role }) => (
+                <li key={`owner:${facility.ccn}:${ownerName}`}>
+                  <button
+                    className="flex w-full flex-col items-start px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onMouseDown={() => select(facility)}
+                  >
+                    <span className="font-medium">{facility.name}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {facility.city}, {facility.state} · CCN {facility.ccn}
+                    </span>
+                    <span className="text-xs text-brand">
+                      {ownerName}
+                      {role && <span className="text-slate-400 dark:text-slate-500"> — {formatRole(role)}</span>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </>
+          )}
         </ul>
       )}
     </div>
