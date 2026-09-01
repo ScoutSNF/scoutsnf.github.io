@@ -1,10 +1,6 @@
 import { db, getMeta, setMeta, isStale } from './db'
-import { fetchSnfRecords } from './snf'
-import { fetchHospitalRecords } from './hospital'
-import { fetchHospitalBedCounts } from './pos'
-import { geocodeBatch, geocodeSingleNominatim, type GeocodeInput } from './geocode'
+import { fetchWithRetry, SourceFetchError } from '../lib/fetchRetry'
 import type { SnfRecord, HospitalRecord } from '../types/facility'
-import { SourceFetchError } from '../lib/fetchRetry'
 
 export interface LoadResult<T> {
   records: T[]
@@ -14,25 +10,33 @@ export interface LoadResult<T> {
 
 const SNF_META_KEY = 'snf'
 const HOSPITAL_META_KEY = 'hospital'
-export const BEDS_ERROR_KEY = 'scoutsnf:bedsError'
 export const SNF_ROSTER_ERROR_KEY = 'scoutsnf:snfRosterError'
 export const HOSPITAL_ROSTER_ERROR_KEY = 'scoutsnf:hospitalRosterError'
+
+export interface RosterManifest {
+  built_at: string
+  snf: { count: number; source_dataset_id: string }
+  hospital: {
+    count: number
+    source_dataset_id: string
+    source_bed_dataset_id: string
+    bedCounts: { matched: number; total: number; error: string | null }
+  }
+}
 
 function rosterErrorMessage(err: unknown, fallback: string): string {
   return err instanceof SourceFetchError || err instanceof Error ? err.message : fallback
 }
 
 /**
- * CMS's own coordinates for a meaningful subset of SNFs turn out to be identical
- * to another, unrelated facility's coordinates (apparent ZIP-centroid fallback in
- * CMS's geocoding rather than a true street-level match — confirmed in production:
- * two different Jamaica, NY facilities both came back as 40.7157,-73.794). Trusting
- * these blindly produces nonsense "0.00 mi apart" results between distinct
- * buildings. Detect any SNFs sharing an exact coordinate with another SNF and
- * re-geocode just that subset via the same Census pipeline used for hospitals,
- * rather than re-geocoding the whole (much larger) SNF roster every time.
+ * CMS's own coordinates for a meaningful subset of SNFs turn out to be identical to another,
+ * unrelated facility's coordinates (apparent ZIP-centroid fallback in CMS's geocoding rather than
+ * a true street-level match -- confirmed in production: two different Jamaica, NY facilities both
+ * came back as 40.7157,-73.794). This only groups already-loaded records in memory -- no network
+ * call, no geocoding. The actual fix now happens upstream in the scripts/roster/ CI pipeline
+ * (scripts/roster/fixCollisions.ts); this is purely a read-only check the browser can still run.
  */
-function findCoordinateCollisions(records: SnfRecord[]): SnfRecord[] {
+export function findCoordinateCollisions(records: SnfRecord[]): SnfRecord[] {
   const groups = new Map<string, SnfRecord[]>()
   for (const r of records) {
     if (r.latitude == null || r.longitude == null) continue
@@ -49,74 +53,45 @@ function findCoordinateCollisions(records: SnfRecord[]): SnfRecord[] {
 }
 
 /**
- * Mutates any colliding records in place with corrected coordinates. Returns how many were found.
- *
- * The one-shot Census batch call reports done=total as soon as it returns, before we know how
- * many actually matched -- the remaining misses then get looked up one at a time via Nominatim
- * (required ~1/sec), which used to report nothing at all and made the progress counter look
- * frozen for however long that took. Reporting progress only from here (not forwarding the
- * batch call's own onProgress) keeps the counter strictly increasing: 0 while the single batch
- * request is in flight, then climbing from however many matched up to `total` as each miss gets
- * individually resolved.
+ * "Re-check facility locations": pulls the latest published SNF roster (already corrected
+ * upstream by the weekly pipeline, including any collision fixes) and reports how many
+ * facilities still share a location with another. No geocoding happens here or anywhere in the
+ * browser -- if collisions remain, the actual fix ships on the pipeline's next run, not from this
+ * click. Falls back to whatever's cached if the origin fetch fails, so the check still means
+ * something (against slightly older data) rather than erroring out.
  */
-async function fixCoordinateCollisions(
-  records: SnfRecord[],
-  onProgress?: (done: number, total: number) => void
-): Promise<number> {
-  const collided = findCoordinateCollisions(records)
-  if (collided.length === 0) return 0
-
-  const inputs: GeocodeInput[] = collided.map((r) => ({
-    id: r.ccn,
-    address: r.address,
-    city: r.city,
-    state: r.state,
-    zip: r.zip
-  }))
-  onProgress?.(0, collided.length)
-  const geocoded = await geocodeBatch(inputs)
-  const misses = inputs.filter((i) => !geocoded.has(i.id))
-  const matchedCount = collided.length - misses.length
-  for (let i = 0; i < misses.length; i++) {
-    const result = await geocodeSingleNominatim(misses[i])
-    if (result) geocoded.set(misses[i].id, result)
-    onProgress?.(matchedCount + i + 1, collided.length)
-  }
-
-  const byCcn = new Map(records.map((r) => [r.ccn, r]))
-  for (const [ccn, geo] of geocoded) {
-    const r = byCcn.get(ccn)
-    if (r) {
-      r.latitude = geo.latitude
-      r.longitude = geo.longitude
+export async function recheckSnfCoordinates(): Promise<{ collisionCount: number; checkedAgainstLatest: boolean }> {
+  try {
+    const fresh = await fetchRosterJson<SnfRecord>('snf-roster.json', 'SNF roster')
+    if (fresh.length > 0) {
+      await db.transaction('rw', db.snf, db.meta, async () => {
+        await db.snf.clear()
+        await db.snf.bulkPut(fresh)
+      })
+      await setMeta(SNF_META_KEY)
+      return { collisionCount: findCoordinateCollisions(fresh).length, checkedAgainstLatest: true }
     }
+  } catch {
+    // fall through to whatever's cached
   }
-  return collided.length
+  const cached = await db.snf.toArray()
+  return { collisionCount: findCoordinateCollisions(cached).length, checkedAgainstLatest: false }
 }
 
 /**
- * Lightweight alternative to a full loadSnfData(forceRefresh=true): re-checks the
- * already-cached SNF roster for coordinate collisions without re-downloading the
- * roster itself, and only makes network calls for the facilities that actually
- * collide. Persists corrections back to the cache.
+ * Fetches a roster artifact published by the scripts/roster/ CI pipeline (roster-pipeline.yml) --
+ * same-origin static JSON, not a live CMS/geocoder call. Coordinates, bed counts, and the SNF
+ * coordinate-collision fix are already baked in by the time this file exists; the browser never
+ * geocodes anything itself.
  */
-export async function recheckSnfCoordinates(
-  onProgress?: (done: number, total: number) => void
-): Promise<{ records: SnfRecord[]; checkedCount: number }> {
-  const cached = await db.snf.toArray()
-  const checkedCount = await fixCoordinateCollisions(cached, onProgress)
-  if (checkedCount > 0) {
-    await db.transaction('rw', db.snf, async () => {
-      await db.snf.clear()
-      await db.snf.bulkPut(cached)
-    })
-  }
-  return { records: cached, checkedCount }
+async function fetchRosterJson<T>(filename: string, label: string, onRetry?: (attempt: number, attempts: number) => void): Promise<T[]> {
+  const res = await fetchWithRetry(`${import.meta.env.BASE_URL}data/${filename}`, label, undefined, { onRetry })
+  return (await res.json()) as T[]
 }
 
 export async function loadSnfData(
   forceRefresh = false,
-  onProgress?: (stage: string, done: number, total: number) => void
+  onRetry?: (attempt: number, attempts: number) => void
 ): Promise<LoadResult<SnfRecord>> {
   const meta = await getMeta(SNF_META_KEY)
   const cached = await db.snf.toArray()
@@ -126,10 +101,8 @@ export async function loadSnfData(
   }
 
   try {
-    const fresh = await fetchSnfRecords((attempt, attempts) => onProgress?.('roster-retry', attempt, attempts))
+    const fresh = await fetchRosterJson<SnfRecord>('snf-roster.json', 'SNF roster', onRetry)
     if (fresh.length === 0) throw new Error('empty response')
-
-    await fixCoordinateCollisions(fresh, (done, total) => onProgress?.('collisions', done, total))
 
     await db.transaction('rw', db.snf, db.meta, async () => {
       await db.snf.clear()
@@ -141,7 +114,7 @@ export async function loadSnfData(
   } catch (err) {
     const message = rosterErrorMessage(err, 'SNF roster unavailable — retry')
     if (cached.length > 0) {
-      // Falling back to cache hides this from the user everywhere except Settings —
+      // Falling back to cache hides this from the user everywhere except Settings --
       // without it, a refresh that silently fails looks identical to one that succeeded.
       localStorage.setItem(SNF_ROSTER_ERROR_KEY, `${new Date().toLocaleString()} — ${message}`)
       return { records: cached, fetchedAt: meta?.fetchedAt ?? '', error: null }
@@ -152,7 +125,7 @@ export async function loadSnfData(
 
 export async function loadHospitalData(
   forceRefresh = false,
-  onProgress?: (stage: string, done: number, total: number) => void
+  onRetry?: (attempt: number, attempts: number) => void
 ): Promise<LoadResult<HospitalRecord>> {
   const meta = await getMeta(HOSPITAL_META_KEY)
   const cached = await db.hospitals.toArray()
@@ -162,80 +135,35 @@ export async function loadHospitalData(
   }
 
   try {
-    const roster = await fetchHospitalRecords((attempt, attempts) => onProgress?.('roster-retry', attempt, attempts))
-    if (roster.length === 0) throw new Error('empty response')
-
-    // Reuse previously-geocoded coordinates for facilities we've already resolved, to avoid re-geocoding every refresh.
-    const prevByCcn = new Map(cached.map((r) => [r.ccn, r]))
-    const needsGeocode: GeocodeInput[] = []
-    for (const h of roster) {
-      const prev = prevByCcn.get(h.ccn)
-      if (prev?.latitude != null && prev?.longitude != null) {
-        h.latitude = prev.latitude
-        h.longitude = prev.longitude
-      } else {
-        needsGeocode.push({ id: h.ccn, address: h.address, city: h.city, state: h.state, zip: h.zip })
-      }
-    }
-
-    if (needsGeocode.length > 0) {
-      onProgress?.('geocoding', 0, needsGeocode.length)
-      const geocoded = await geocodeBatch(needsGeocode, (done, total) =>
-        onProgress?.('geocoding', done, total)
-      )
-      // Whatever the Census batch missed gets looked up one address at a time via Nominatim
-      // (required ~1/sec) -- this is its own reported phase so the counter keeps moving instead
-      // of sitting at "done=total" (from the batch call above) for however long this takes.
-      const misses = needsGeocode.filter((n) => !geocoded.has(n.id))
-      if (misses.length > 0) onProgress?.('geocoding-fallback', 0, misses.length)
-      for (let i = 0; i < misses.length; i++) {
-        const result = await geocodeSingleNominatim(misses[i])
-        if (result) geocoded.set(misses[i].id, result)
-        onProgress?.('geocoding-fallback', i + 1, misses.length)
-      }
-      const byCcn = new Map(roster.map((h) => [h.ccn, h]))
-      for (const [ccn, geo] of geocoded) {
-        const h = byCcn.get(ccn)
-        if (h) {
-          h.latitude = geo.latitude
-          h.longitude = geo.longitude
-        }
-      }
-    }
-
-    try {
-      onProgress?.('beds', 0, 1)
-      const beds = await fetchHospitalBedCounts()
-      for (const h of roster) {
-        const bedCount = beds.get(h.ccn)
-        if (bedCount != null) h.certifiedBeds = bedCount
-      }
-      localStorage.removeItem(BEDS_ERROR_KEY)
-    } catch (err) {
-      // bed counts stay null; surfaced as "Not available" in the facility UI rather than
-      // failing the whole roster. The message is kept in localStorage (shown in Settings)
-      // since this fetch can't be exercised or debugged from the build environment.
-      const message = err instanceof Error ? err.message : String(err)
-      console.warn('[dataset] hospital bed count fetch failed', err)
-      localStorage.setItem(BEDS_ERROR_KEY, `${new Date().toLocaleString()} — ${message}`)
-    }
+    const fresh = await fetchRosterJson<HospitalRecord>('hospital-roster.json', 'Hospital roster', onRetry)
+    if (fresh.length === 0) throw new Error('empty response')
 
     await db.transaction('rw', db.hospitals, db.meta, async () => {
       await db.hospitals.clear()
-      await db.hospitals.bulkPut(roster)
+      await db.hospitals.bulkPut(fresh)
     })
     await setMeta(HOSPITAL_META_KEY)
     localStorage.removeItem(HOSPITAL_ROSTER_ERROR_KEY)
-    return { records: roster, fetchedAt: new Date().toISOString(), error: null }
+    return { records: fresh, fetchedAt: new Date().toISOString(), error: null }
   } catch (err) {
     const message = rosterErrorMessage(err, 'Hospital roster unavailable — retry')
     if (cached.length > 0) {
-      // Falling back to cache hides this from the user everywhere except Settings —
-      // without it, a refresh that silently fails looks identical to one that succeeded.
       localStorage.setItem(HOSPITAL_ROSTER_ERROR_KEY, `${new Date().toLocaleString()} — ${message}`)
       return { records: cached, fetchedAt: meta?.fetchedAt ?? '', error: null }
     }
     return { records: [], fetchedAt: '', error: message }
+  }
+}
+
+/** Best-effort fetch of the CI pipeline's build manifest, for the Settings freshness badge. Never
+ * blocks or fails app load -- returns null on any error, including before the pipeline's first run. */
+export async function loadRosterManifest(): Promise<RosterManifest | null> {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}data/roster-manifest.json`)
+    if (!res.ok) return null
+    return (await res.json()) as RosterManifest
+  } catch {
+    return null
   }
 }
 
