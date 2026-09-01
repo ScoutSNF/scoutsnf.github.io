@@ -55,9 +55,19 @@ export function validateRoster(snfs: SnfRecord[], hospitals: HospitalRecord[], p
   if (dupeHospitalCcns.length > 0) issues.push(`${dupeHospitalCcns.length} duplicate hospital CCN(s): ${dupeHospitalCcns.slice(0, 10).join(', ')}`)
 
   const badSnfCoords = snfs.filter((r) => r.latitude != null && r.longitude != null && !inUsBounds(r.latitude, r.longitude))
-  if (badSnfCoords.length > 0) issues.push(`${badSnfCoords.length} SNF(s) with out-of-bounds coordinates, e.g. CCN ${badSnfCoords[0].ccn}`)
+  if (badSnfCoords.length > 0) {
+    const b = badSnfCoords[0]
+    issues.push(
+      `${badSnfCoords.length} SNF(s) with out-of-bounds coordinates, e.g. CCN ${b.ccn} "${b.name}" in ${b.city}, ${b.state} ${b.zip} at (${b.latitude}, ${b.longitude}), address="${b.address}"`
+    )
+  }
   const badHospitalCoords = hospitals.filter((r) => r.latitude != null && r.longitude != null && !inUsBounds(r.latitude, r.longitude))
-  if (badHospitalCoords.length > 0) issues.push(`${badHospitalCoords.length} hospital(s) with out-of-bounds coordinates, e.g. CCN ${badHospitalCoords[0].ccn}`)
+  if (badHospitalCoords.length > 0) {
+    const b = badHospitalCoords[0]
+    issues.push(
+      `${badHospitalCoords.length} hospital(s) with out-of-bounds coordinates, e.g. CCN ${b.ccn} "${b.name}" in ${b.city}, ${b.state} ${b.zip} at (${b.latitude}, ${b.longitude}), address="${b.address}"`
+    )
+  }
 
   checkCountDrop('SNF', snfs.length, previous?.snfCount, issues)
   checkCountDrop('Hospital', hospitals.length, previous?.hospitalCount, issues)
