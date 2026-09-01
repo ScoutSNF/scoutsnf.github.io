@@ -1,10 +1,18 @@
 import type { SnfRecord, HospitalRecord } from './types.js'
 
-// Generous continental-US-plus-territories bounding box (covers AK, HI, PR) -- wide enough to
-// never false-positive on a real US facility, tight enough to catch a badly parsed/garbage
-// coordinate (e.g. 0,0 or a swapped lat/lon).
-const US_LAT_RANGE: [number, number] = [15, 72]
-const US_LON_RANGE: [number, number] = [-180, -60]
+// CMS certifies facilities across US territories scattered clear around the globe -- a single
+// contiguous lat/lon box can't cover the mainland+AK+HI+PR/USVI cluster (roughly -180 to -65) AND
+// Guam/Northern Mariana Islands (~+144 to +147, the *other* side of the antimeridian) AND American
+// Samoa (~-172 to -168, southern hemisphere) without also swallowing most of the globe in between.
+// So this validates against a set of known-valid regions instead: a coordinate is fine if it falls
+// in *any* of them. Confirmed against real data -- CCN 655000 "Guam Memorial Hospital Authority"
+// at (13.4886, 144.797) failed the original single mainland-shaped box and correctly blocked
+// publication, which is how this list got the Guam/CNMI region added.
+const VALID_REGIONS: Array<{ name: string; lat: [number, number]; lon: [number, number] }> = [
+  { name: 'mainland US + AK/HI/PR/USVI', lat: [15, 72], lon: [-180, -65] },
+  { name: 'Guam / Northern Mariana Islands', lat: [13, 21], lon: [144, 147] },
+  { name: 'American Samoa', lat: [-15, -13], lon: [-172, -168] }
+]
 
 // A single bad CI run publishing a roster with most of the country missing would be far worse
 // than the CI run failing loudly -- 15% is a large enough drop that it can't plausibly be normal
@@ -17,7 +25,7 @@ export interface RosterManifestCounts {
 }
 
 function inUsBounds(lat: number, lon: number): boolean {
-  return lat >= US_LAT_RANGE[0] && lat <= US_LAT_RANGE[1] && lon >= US_LON_RANGE[0] && lon <= US_LON_RANGE[1]
+  return VALID_REGIONS.some((r) => lat >= r.lat[0] && lat <= r.lat[1] && lon >= r.lon[0] && lon <= r.lon[1])
 }
 
 function findDuplicateCcns(records: Array<{ ccn: string }>): string[] {
@@ -55,9 +63,19 @@ export function validateRoster(snfs: SnfRecord[], hospitals: HospitalRecord[], p
   if (dupeHospitalCcns.length > 0) issues.push(`${dupeHospitalCcns.length} duplicate hospital CCN(s): ${dupeHospitalCcns.slice(0, 10).join(', ')}`)
 
   const badSnfCoords = snfs.filter((r) => r.latitude != null && r.longitude != null && !inUsBounds(r.latitude, r.longitude))
-  if (badSnfCoords.length > 0) issues.push(`${badSnfCoords.length} SNF(s) with out-of-bounds coordinates, e.g. CCN ${badSnfCoords[0].ccn}`)
+  if (badSnfCoords.length > 0) {
+    const b = badSnfCoords[0]
+    issues.push(
+      `${badSnfCoords.length} SNF(s) with out-of-bounds coordinates, e.g. CCN ${b.ccn} "${b.name}" in ${b.city}, ${b.state} ${b.zip} at (${b.latitude}, ${b.longitude}), address="${b.address}"`
+    )
+  }
   const badHospitalCoords = hospitals.filter((r) => r.latitude != null && r.longitude != null && !inUsBounds(r.latitude, r.longitude))
-  if (badHospitalCoords.length > 0) issues.push(`${badHospitalCoords.length} hospital(s) with out-of-bounds coordinates, e.g. CCN ${badHospitalCoords[0].ccn}`)
+  if (badHospitalCoords.length > 0) {
+    const b = badHospitalCoords[0]
+    issues.push(
+      `${badHospitalCoords.length} hospital(s) with out-of-bounds coordinates, e.g. CCN ${b.ccn} "${b.name}" in ${b.city}, ${b.state} ${b.zip} at (${b.latitude}, ${b.longitude}), address="${b.address}"`
+    )
+  }
 
   checkCountDrop('SNF', snfs.length, previous?.snfCount, issues)
   checkCountDrop('Hospital', hospitals.length, previous?.hospitalCount, issues)

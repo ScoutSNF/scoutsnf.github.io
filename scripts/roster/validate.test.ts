@@ -68,6 +68,14 @@ describe('validateRoster', () => {
     expect(issues.some((i) => i.includes('out-of-bounds'))).toBe(true)
   })
 
+  it('does not flag legitimate US-territory coordinates outside the mainland cluster', () => {
+    // Real production case: CCN 655000 "Guam Memorial Hospital Authority" at (13.4886, 144.797)
+    // -- a genuine CMS-certified facility, not bad data.
+    const guam = snf({ ccn: 'GU1', latitude: 13.4886, longitude: 144.797 })
+    const americanSamoa = snf({ ccn: 'AS1', latitude: -14.3, longitude: -170.7 })
+    expect(validateRoster([guam, americanSamoa], [hospital()])).toEqual([])
+  })
+
   it('does not flag a facility with no coordinates yet (unresolved, not invalid)', () => {
     const issues = validateRoster([snf({ latitude: null, longitude: null })], [hospital()])
     expect(issues).toEqual([])
