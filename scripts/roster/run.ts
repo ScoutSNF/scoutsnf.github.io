@@ -18,7 +18,14 @@ const MANIFEST_PATH = path.join(DATA_DIR, 'roster-manifest.json')
 interface RosterManifest {
   built_at: string
   snf: { count: number; source_dataset_id: string }
-  hospital: { count: number; source_dataset_id: string; source_bed_dataset_id: string }
+  hospital: {
+    count: number
+    source_dataset_id: string
+    source_bed_dataset_id: string
+    /** Kept distinct from the roster/geocoding status above -- a bed-count-fetch problem
+     * shouldn't be lumped in with (or block publishing) the roster itself. */
+    bedCounts: { matched: number; total: number; error: string | null }
+  }
 }
 
 async function readPreviousManifest(): Promise<RosterManifestCounts | undefined> {
@@ -63,13 +70,29 @@ export async function run(): Promise<void> {
 
   await geocodeHospitals(hospitals, cache)
 
+  // Bed counts come from a third, independent CMS dataset (Provider of Services) -- a failure
+  // here shouldn't block publishing the roster/coordinates, which is the P0-relevant data. Matches
+  // the original spec's own guidance: isolate a failed source with a degraded status rather than
+  // either publishing a silent mix or discarding an otherwise-good build.
   console.log('Fetching hospital bed counts...')
-  const beds = await fetchHospitalBedCounts()
-  for (const h of hospitals) {
-    const bedCount = beds.get(h.ccn)
-    if (bedCount != null) h.certifiedBeds = bedCount
+  let bedCounts: RosterManifest['hospital']['bedCounts']
+  try {
+    const beds = await fetchHospitalBedCounts()
+    let matched = 0
+    for (const h of hospitals) {
+      const bedCount = beds.get(h.ccn)
+      if (bedCount != null) {
+        h.certifiedBeds = bedCount
+        matched++
+      }
+    }
+    bedCounts = { matched, total: hospitals.length, error: null }
+    console.log(`Bed counts matched: ${matched}/${hospitals.length}`)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    bedCounts = { matched: 0, total: hospitals.length, error: message }
+    console.warn(`Bed count fetch failed, publishing without bed counts this run: ${message}`)
   }
-  console.log(`Bed counts matched: ${[...beds.keys()].filter((ccn) => hospitals.some((h) => h.ccn === ccn)).length}/${hospitals.length}`)
 
   console.log('Checking for SNF coordinate collisions...')
   const collisionCount = await fixCoordinateCollisions(snfs, cache)
@@ -85,7 +108,12 @@ export async function run(): Promise<void> {
   const manifest: RosterManifest = {
     built_at: new Date().toISOString(),
     snf: { count: snfs.length, source_dataset_id: CMS_SNF_DATASET_ID },
-    hospital: { count: hospitals.length, source_dataset_id: CMS_HOSPITAL_DATASET_ID, source_bed_dataset_id: CMS_POS_HOSPITAL_DATASET_UUID }
+    hospital: {
+      count: hospitals.length,
+      source_dataset_id: CMS_HOSPITAL_DATASET_ID,
+      source_bed_dataset_id: CMS_POS_HOSPITAL_DATASET_UUID,
+      bedCounts
+    }
   }
 
   await mkdir(DATA_DIR, { recursive: true })

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FacilityRecord, HospitalType, SnfRecord, HospitalRecord, Portfolio } from './types/facility'
-import { loadSnfData, loadHospitalData, recheckSnfCoordinates, getCachedSnf, getCachedHospitals } from './data/dataset'
+import {
+  loadSnfData,
+  loadHospitalData,
+  loadRosterManifest,
+  recheckSnfCoordinates,
+  getCachedSnf,
+  getCachedHospitals,
+  type RosterManifest
+} from './data/dataset'
 import { loadCostReports } from './data/costReports'
 import type { FacilityYearRecord } from './types/costReport'
 import { HOSPITAL_TYPES } from './lib/hospitalType'
@@ -50,6 +58,7 @@ export default function App() {
    * behind the full-screen loading spinner. */
   const [refreshing, setRefreshing] = useState(false)
   const [refreshStage, setRefreshStage] = useState('')
+  const [rosterManifest, setRosterManifest] = useState<RosterManifest | null>(null)
   const [legendOpen, setLegendOpen] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
 
@@ -112,13 +121,8 @@ export default function App() {
 
     setErrors([])
     setLoadStage('Loading SNF roster…')
-    const snfResult = await loadSnfData(forceRefresh, (stage, done, total) => {
-      const text =
-        stage === 'collisions'
-          ? `Verifying SNF coordinates… ${done}/${total}`
-          : stage === 'roster-retry'
-            ? `Loading SNF roster… connection is slow, retrying (${done}/${total})`
-            : 'Loading SNF roster…'
+    const snfResult = await loadSnfData(forceRefresh, (attempt, attempts) => {
+      const text = `Loading SNF roster… connection is slow, retrying (${attempt}/${attempts})`
       setLoadStage(text)
       setRefreshStage(text)
     })
@@ -126,16 +130,9 @@ export default function App() {
     setSnfFetchedAt(snfResult.fetchedAt)
     if (snfResult.error) setErrors((e) => [...e, snfResult.error!])
 
-    setLoadStage('Loading hospital roster + geocoding…')
-    const hospitalResult = await loadHospitalData(forceRefresh, (stage, done, total) => {
-      const text =
-        stage === 'geocoding'
-          ? `Geocoding ${total} new hospital${total === 1 ? '' : 's'}… ${done}/${total}`
-          : stage === 'geocoding-fallback'
-            ? `Looking up ${total} unmatched hospital${total === 1 ? '' : 's'} individually… ${done}/${total}`
-            : stage === 'roster-retry'
-              ? `Loading hospital roster… connection is slow, retrying (${done}/${total})`
-              : 'Fetching hospital bed counts…'
+    setLoadStage('Loading hospital roster…')
+    const hospitalResult = await loadHospitalData(forceRefresh, (attempt, attempts) => {
+      const text = `Loading hospital roster… connection is slow, retrying (${attempt}/${attempts})`
       setLoadStage(text)
       setRefreshStage(text)
     })
@@ -148,10 +145,13 @@ export default function App() {
     setRefreshStage('')
   }
 
-  async function recheckCoordinates(onProgress?: (done: number, total: number) => void) {
-    const { records, checkedCount } = await recheckSnfCoordinates(onProgress)
-    setSnfs(records)
-    return checkedCount
+  async function recheckCoordinates() {
+    const { collisionCount, checkedAgainstLatest } = await recheckSnfCoordinates()
+    if (checkedAgainstLatest) {
+      const { records } = await getCachedSnf()
+      setSnfs(records)
+    }
+    return { collisionCount, checkedAgainstLatest }
   }
 
   useEffect(() => {
@@ -161,6 +161,7 @@ export default function App() {
     // Supplementary, not required for the app to function -- doesn't gate the main loading screen,
     // and quietly stays empty if the pipeline hasn't produced the file yet.
     void loadCostReports().then(setCostReportsByCcn)
+    void loadRosterManifest().then(setRosterManifest)
   }, [])
 
   useEffect(() => {
@@ -321,6 +322,7 @@ export default function App() {
             <SettingsMenu
               snfFetchedAt={snfFetchedAt}
               hospitalFetchedAt={hospitalFetchedAt}
+              rosterManifest={rosterManifest}
               onRefresh={() => void loadAll(true)}
               onRecheckCoordinates={recheckCoordinates}
               onOpenLegend={() => setLegendOpen(true)}
