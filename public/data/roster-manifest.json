@@ -1,5 +1,5 @@
 {
-  "built_at": "2026-09-01T02:04:43.475Z",
+  "built_at": "2026-09-01T02:46:14.878Z",
   "snf": {
     "count": 14690,
     "source_dataset_id": "4pq5-n9py"
@@ -7,6 +7,11 @@
   "hospital": {
     "count": 5419,
     "source_dataset_id": "xubh-q36u",
-    "source_bed_dataset_id": "8ba0f9b4-9493-4aa0-9f82-44ea9468d1b5"
+    "source_bed_dataset_id": "8ba0f9b4-9493-4aa0-9f82-44ea9468d1b5",
+    "bedCounts": {
+      "matched": 5409,
+      "total": 5419,
+      "error": null
+    }
   }
 }
