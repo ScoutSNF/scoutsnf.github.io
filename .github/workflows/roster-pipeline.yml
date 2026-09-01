@@ -1,0 +1,62 @@
+name: SNF/hospital roster refresh
+
+on:
+  schedule:
+    # Weekly -- CMS refreshes Care Compare roughly monthly, and a shorter interval keeps each
+    # run's hospital-geocoding workload small (mostly cache hits) rather than piling up.
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run roster pipeline
+        run: npm run roster:run
+
+      - name: Check for changes
+        id: diff
+        run: |
+          # git diff alone misses brand-new (untracked) output files -- status --porcelain catches
+          # both untracked ("??") and modified files. The geocode cache is included: even when the
+          # published roster itself is unchanged, newly-cached addresses are worth committing so
+          # the next run doesn't re-geocode them.
+          if [ -n "$(git status --porcelain -- public/data/snf-roster.json public/data/hospital-roster.json public/data/roster-manifest.json scripts/roster/geocode-cache.json)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR with the refreshed data
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Includes the run ID (not just the date) -- a date-only name collides with a stale
+          # branch from an earlier run the same day (e.g. a manual re-trigger), which fails the
+          # push with a non-fast-forward rejection since that branch has unrelated history.
+          BRANCH="roster-refresh-$(date +%Y%m%d)-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add public/data/snf-roster.json public/data/hospital-roster.json public/data/roster-manifest.json scripts/roster/geocode-cache.json
+          git commit -m "Weekly SNF/hospital roster refresh"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --title "Weekly SNF/hospital roster refresh" \
+            --body "Automated refresh from CMS Provider Information, Hospital General Information, and Provider of Services. Hospital coordinates are resolved by the Census batch geocoder (Nominatim fallback for misses), cached by address so only new/changed addresses get re-geocoded. Review the pipeline run log in the Actions tab before merging -- this updates the national facility roster shown across the app." \
+            --base main \
+            --head "$BRANCH"
