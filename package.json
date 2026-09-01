@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "hcris:run": "tsx scripts/hcris/run.ts"
+    "hcris:run": "tsx scripts/hcris/run.ts",
+    "roster:run": "tsx scripts/roster/run.ts"
   },
   "dependencies": {
     "dexie": "^4.0.10",
