@@ -13,7 +13,7 @@
  * that entirely by opening the tracking sheet directly by ID instead.
  */
 
-var SPREADSHEET_ID = '1-0Kem3s90rTflNoBsJJm4pJ2lFZp0_7Et49pbE0tWso'; // from the sheet's URL, between /d/ and /edit
+var SPREADSHEET_ID = '1-0Kem3s90rTfLNoBsJJm4pJ2IFZp0_7Et49pbE0tWso'; // from the sheet's URL, between /d/ and /edit
 var LOG_SHEET = 'Log';
 var DENY_SHEET = 'Denied';
 
