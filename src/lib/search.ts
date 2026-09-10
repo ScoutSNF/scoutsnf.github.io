@@ -9,6 +9,20 @@ export interface SearchHit {
   score: number
 }
 
+export interface SearchResult {
+  /** Ranked matches, capped at `limit`. */
+  hits: SearchHit[]
+  /** How many matched in total, before the cap -- so truncation is never silent. */
+  total: number
+}
+
+/**
+ * High enough to browse a whole filter-driven result set (the largest today is 441 SFF
+ * candidates) rather than just type-ahead's first few, and low enough that a broad text query
+ * doesn't render thousands of rows. The list is scrollable, and `total` reports anything cut.
+ */
+export const DEFAULT_SEARCH_LIMIT = 500
+
 export interface SearchFilters {
   state?: string
   kind?: FacilityKind
@@ -47,13 +61,13 @@ export function searchFacilities(
   snfs: FacilityRecord[],
   hospitals: FacilityRecord[],
   filters: SearchFilters = {},
-  limit = 20
-): SearchHit[] {
+  limit = DEFAULT_SEARCH_LIMIT
+): SearchResult {
   const q = norm(query)
   const hasQuery = q.length >= 2
   const hasFilters =
     filters.state != null || filters.kind != null || filters.bedsMin != null || filters.bedsMax != null || filters.specialFocus != null
-  if (!hasQuery && !hasFilters) return []
+  if (!hasQuery && !hasFilters) return { hits: [], total: 0 }
 
   const all = [...snfs, ...hospitals]
   const hits: SearchHit[] = []
@@ -77,5 +91,5 @@ export function searchFacilities(
   }
 
   hits.sort((a, b) => b.score - a.score || a.facility.name.localeCompare(b.facility.name))
-  return hits.slice(0, limit)
+  return { hits: hits.slice(0, limit), total: hits.length }
 }

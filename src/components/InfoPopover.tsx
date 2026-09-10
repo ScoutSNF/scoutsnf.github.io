@@ -36,8 +36,12 @@ export function InfoPopover({ legendKey, className }: { legendKey: LegendKey; cl
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onClick={() => setOpen(false)}
         >
+          {/* whitespace-normal is load-bearing: this panel is position:fixed but still a DOM
+              descendant of the trigger, and white-space inherits regardless of positioning. A
+              trigger sitting inside a whitespace-nowrap badge would otherwise force the details
+              text onto one line and run it straight off the panel. */}
           <div
-            className="w-full max-w-sm rounded-xl bg-white p-4 shadow-lg dark:bg-slate-900"
+            className="w-full max-w-sm whitespace-normal break-words rounded-xl bg-white p-4 text-left shadow-lg dark:bg-slate-900"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-2">
