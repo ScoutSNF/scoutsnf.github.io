@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { FacilityRecord, SnfRecord, HospitalRecord, FacilityKind } from '../types/facility'
-import { searchFacilities, passesFilters } from '../lib/search'
+import { searchFacilities, passesFilters, type SpecialFocusFilter } from '../lib/search'
 import { useOwnerNameSearch } from '../hooks/useOwnerNameSearch'
 import { formatRole } from '../lib/ownershipDisplay'
 
@@ -27,7 +27,7 @@ export function SearchBar({
   const [kindFilter, setKindFilter] = useState<FacilityKind | 'all'>('all')
   const [bedsMin, setBedsMin] = useState('')
   const [bedsMax, setBedsMax] = useState('')
-  const [sffOnly, setSffOnly] = useState(false)
+  const [specialFocus, setSpecialFocus] = useState<SpecialFocusFilter | ''>('')
   const [ownerQuery, setOwnerQuery] = useState('')
 
   const states = useMemo(() => [...new Set([...snfs, ...hospitals].map((f) => f.state))].sort(), [snfs, hospitals])
@@ -39,11 +39,11 @@ export function SearchBar({
       kind: kindFilter === 'all' ? undefined : kindFilter,
       bedsMin: bedsMin === '' ? undefined : Number(bedsMin),
       bedsMax: bedsMax === '' ? undefined : Number(bedsMax),
-      sffOnly: sffOnly || undefined
+      specialFocus: specialFocus || undefined
     }),
-    [stateFilter, kindFilter, bedsMin, bedsMax, sffOnly]
+    [stateFilter, kindFilter, bedsMin, bedsMax, specialFocus]
   )
-  const activeFilterCount = [stateFilter, kindFilter !== 'all', bedsMin, bedsMax, sffOnly, ownerQuery].filter(Boolean).length
+  const activeFilterCount = [stateFilter, kindFilter !== 'all', bedsMin, bedsMax, specialFocus, ownerQuery].filter(Boolean).length
 
   const hits = useMemo(() => searchFacilities(query, snfs, hospitals, filters), [query, snfs, hospitals, filters])
 
@@ -75,7 +75,7 @@ export function SearchBar({
     setKindFilter('all')
     setBedsMin('')
     setBedsMax('')
-    setSffOnly(false)
+    setSpecialFocus('')
     setOwnerQuery('')
   }
 
@@ -142,7 +142,7 @@ export function SearchBar({
                     onClick={() => {
                       setKindFilter(k)
                       if (k === 'hospital') {
-                        setSffOnly(false)
+                        setSpecialFocus('')
                         setOwnerQuery('')
                       }
                     }}
@@ -194,20 +194,24 @@ export function SearchBar({
             />
           </label>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-end justify-between gap-3">
             <label
-              className={`flex items-center gap-1.5 text-xs ${
-                kindFilter === 'hospital' ? 'text-slate-300 dark:text-slate-600' : 'text-slate-600 dark:text-slate-300'
+              className={`flex flex-1 flex-col gap-1 text-xs ${
+                kindFilter === 'hospital' ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'
               }`}
             >
-              <input
-                type="checkbox"
-                checked={sffOnly}
+              Special Focus status
+              <select
+                value={specialFocus}
                 disabled={kindFilter === 'hospital'}
-                onChange={(e) => setSffOnly(e.target.checked)}
-                className="accent-brand"
-              />
-              Special Focus Facility only
+                onChange={(e) => setSpecialFocus(e.target.value as SpecialFocusFilter | '')}
+                className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
+              >
+                <option value="">Any</option>
+                <option value="sff">Special Focus Facility</option>
+                <option value="candidate">SFF Candidate</option>
+                <option value="any">Either</option>
+              </select>
             </label>
             {activeFilterCount > 0 && (
               <button onClick={clearFilters} className="text-xs text-sky-600 hover:underline dark:text-sky-400">

@@ -5,6 +5,7 @@ export type LegendKey =
   | 'snf-sub-ratings'
   | 'snf-ownership'
   | 'snf-sff'
+  | 'snf-sff-candidate'
   | 'hospital-type'
   | 'hospital-overall-rating'
   | 'hospital-emergency'
@@ -68,10 +69,17 @@ const ENTRIES: LegendEntry[] = [
   },
   {
     key: 'snf-sff',
-    stat: 'Special Focus Facility status',
+    stat: 'Special Focus Facility',
     source: 'CMS Care Compare',
     refresh: '~monthly',
-    details: 'CMS flag for facilities under additional oversight'
+    details: 'Currently in the SFF program — surveyed about twice as often, with termination exposure'
+  },
+  {
+    key: 'snf-sff-candidate',
+    stat: 'SFF Candidate',
+    source: 'CMS Care Compare',
+    refresh: '~monthly',
+    details: 'On the SFF watch list and eligible for selection, but not in the program'
   },
   {
     key: 'hospital-type',
@@ -159,7 +167,10 @@ export function getLegendEntry(key: LegendKey): LegendEntry | undefined {
 }
 
 export const LEGEND_GROUPS: LegendGroup[] = [
-  { title: 'CMS Care Compare (SNFs)', keys: ['snf-beds', 'snf-occupancy', 'snf-overall-rating', 'snf-sub-ratings', 'snf-ownership', 'snf-sff'] },
+  {
+    title: 'CMS Care Compare (SNFs)',
+    keys: ['snf-beds', 'snf-occupancy', 'snf-overall-rating', 'snf-sub-ratings', 'snf-ownership', 'snf-sff', 'snf-sff-candidate']
+  },
   { title: 'CMS Hospital General Information', keys: ['hospital-type', 'hospital-overall-rating', 'hospital-emergency'] },
   { title: 'CMS Provider of Services file', keys: ['hospital-beds'] },
   { title: 'CMS HCRIS cost reports', keys: ['cost-report-occupancy', 'cost-report-margin', 'cost-report-payer-mix', 'cost-report-status', 'cost-report-trend'] },
