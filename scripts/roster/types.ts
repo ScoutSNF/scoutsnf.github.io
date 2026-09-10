@@ -5,6 +5,14 @@
 
 export type HospitalType = 'Acute Care' | 'Critical Access' | 'Psychiatric' | "Children's" | 'VA' | 'DoD' | 'LTCH' | 'Inpatient Rehab' | 'Other'
 
+/**
+ * CMS's Special Focus program has two distinct populations and they must not be collapsed:
+ * 'sff' is a facility currently *in* the program (roughly 90 nationally, surveyed about twice a
+ * year, carrying real termination exposure), while 'candidate' is one on the watch list eligible
+ * for selection (several hundred). Only an 'sff' gets the red hand on CMS Care Compare.
+ */
+export type SpecialFocusStatus = 'sff' | 'candidate'
+
 export interface SnfRecord {
   kind: 'snf'
   ccn: string
@@ -23,7 +31,10 @@ export interface SnfRecord {
   staffingRating: number | null
   qualityMeasureRating: number | null
   ownershipType: string | null
-  specialFocusFacility: boolean
+  specialFocusStatus: SpecialFocusStatus | null
+  /** CMS's verbatim `special_focus_status` cell, kept so a future classification change can be
+   *  made without re-fetching -- same reasoning as HospitalRecord.hospitalTypeRaw. */
+  specialFocusStatusRaw: string | null
   processingDate: string | null
 }
 

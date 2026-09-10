@@ -23,8 +23,10 @@ non-zero) and **Search**.
 - Ranking order: name prefix > name substring > city prefix > city substring > ZIP prefix.
   Ties break alphabetically by name.
 - Minimum 2 characters for a text query.
-- Filters: state, facility kind (SNF/hospital), bed-count min/max, Special Focus Facility only
-  (SNF-only; no effect when kind is hospital).
+- Filters: state, facility kind (SNF/hospital), bed-count min/max, Special Focus status
+  (SNF-only; no effect when kind is hospital). The Special Focus filter offers Any / Special
+  Focus Facility / SFF Candidate / Either — these are different populations and selecting one
+  must never return the other.
 - Filters and text combine as AND, and **either can drive results alone** — a bare filter set
   with no text ("all SNFs in Ohio with 100+ beds") is a valid search.
 
@@ -47,7 +49,14 @@ non-zero) and **Search**.
 
 SNFs: name, address, city, state, ZIP, certified beds, average daily census, occupancy %, all
 five CMS star ratings (overall, health inspection, staffing, quality measures), ownership type,
-Special Focus Facility flag, CMS processing date.
+Special Focus status, CMS processing date.
+
+**Special Focus is two statuses, never one flag.** `sff` is a facility currently in the CMS
+program (under 100 nationally, roughly twice-yearly surveys, termination exposure). `candidate`
+is on the watch list and eligible for selection (several hundred). Only an `sff` gets the red
+hand on CMS Care Compare. They must stay visually distinct (red vs amber badge), separately
+filterable, and separately labeled in exports. Collapsing them into one boolean is the specific
+regression this entry exists to prevent — it previously overstated risk on ~440 facilities.
 
 Hospitals: name, address, city, state, ZIP, hospital type (Acute Care, Critical Access,
 Psychiatric, Children's, VA, DoD, LTCH, Inpatient Rehab, Other), overall rating, emergency

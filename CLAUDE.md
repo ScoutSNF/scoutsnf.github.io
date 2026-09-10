@@ -43,8 +43,11 @@ Never conclude a listed behavior is dead code because you can't immediately see 
 ## Invariants — do not silently change these
 
 - Facility free-text search matches and ranks by **name, city, and ZIP only**. There is no CCN
-  matching and none should be added. Filters (state, kind, bed range, Special Focus Facility)
+  matching and none should be added. Filters (state, kind, bed range, Special Focus status)
   can drive results alone with no text query.
+- **Special Focus Facility and SFF Candidate are different populations** and must never be
+  collapsed into one flag. Only an SFF is in the program; a candidate is on the watch list.
+  Distinct badges, distinct filter options, distinct export labels. See `docs/preservation.md`.
 - Radius steps are exactly 10/15/20/25/30/35/40 miles.
 - Settings keeps all of: SNF roster date, hospital roster date, hospital bed-data status,
   "Refresh data…", "Re-check facility locations", "Legend — data sources".

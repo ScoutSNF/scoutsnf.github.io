@@ -1,9 +1,27 @@
-import type { SnfRecord } from './types.js'
+import type { SnfRecord, SpecialFocusStatus } from './types.js'
 import { findColumn, parseNum } from './csv.js'
 import { fetchCmsDatasetTable, type OnRetry } from './fetchDataset.js'
 import { CMS_SNF_DATASET_ID } from './sources.js'
 
 const SOURCE_LABEL = 'SNF roster'
+
+/**
+ * CMS's `special_focus_status` is a label, not a yes/no -- "SFF" and "SFF Candidate" are
+ * different populations. An earlier `/sff|yes|true/` substring test matched both, flagging 525
+ * of 14,690 facilities as Special Focus when the real program is under 100; the rest were
+ * candidates, which is why they showed no red hand on Care Compare.
+ *
+ * "candidate" is checked first precisely because "SFF Candidate" contains "SFF". The test is on
+ * the substring rather than an exact string so a wording or casing change on CMS's side
+ * degrades to the safer classification instead of silently promoting candidates again.
+ */
+export function classifySpecialFocus(raw: string | null | undefined): SpecialFocusStatus | null {
+  const value = (raw ?? '').trim()
+  if (!value) return null
+  if (/candidate/i.test(value)) return 'candidate'
+  if (/sff|special focus|yes|true/i.test(value)) return 'sff'
+  return null
+}
 
 /** Port of src/data/snf.ts, unchanged logic -- see scripts/roster/fetchDataset.ts for why this is a separate copy. */
 export async function fetchSnfRecords(onRetry?: OnRetry): Promise<SnfRecord[]> {
@@ -56,7 +74,8 @@ export async function fetchSnfRecords(onRetry?: OnRetry): Promise<SnfRecord[]> {
       staffingRating: col.staffing !== -1 ? parseNum(row[col.staffing]) : null,
       qualityMeasureRating: col.qm !== -1 ? parseNum(row[col.qm]) : null,
       ownershipType: col.ownership !== -1 ? row[col.ownership] || null : null,
-      specialFocusFacility: col.sff !== -1 ? /sff|yes|true/i.test(row[col.sff] ?? '') : false,
+      specialFocusStatus: col.sff !== -1 ? classifySpecialFocus(row[col.sff]) : null,
+      specialFocusStatusRaw: col.sff !== -1 ? row[col.sff]?.trim() || null : null,
       processingDate: col.processingDate !== -1 ? row[col.processingDate] || null : null
     })
   }

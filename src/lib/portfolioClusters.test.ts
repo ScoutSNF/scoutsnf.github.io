@@ -22,7 +22,8 @@ function snf(ccn: string, overrides: Partial<SnfRecord> = {}): SnfRecord {
     staffingRating: 3,
     qualityMeasureRating: 3,
     ownershipType: null,
-    specialFocusFacility: false,
+    specialFocusStatus: null,
+    specialFocusStatusRaw: null,
     processingDate: null,
     ...overrides
   }

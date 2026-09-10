@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FacilityRecord } from '../types/facility'
 import type { FacilityYearRecord } from '../types/costReport'
 import { TypeBadge } from './TypeBadge'
+import { SpecialFocusBadge } from './SpecialFocusBadge'
 import { StarRating } from './StarRating'
 import { PlaceholderImage } from './PlaceholderImage'
 import { BookmarkIcon } from './BookmarkIcon'
@@ -60,11 +61,7 @@ export function FacilityRow({
             <span className="shrink-0">
               <TypeBadge facility={facility} />
             </span>
-            {facility.kind === 'snf' && facility.specialFocusFacility && (
-              <span className="shrink-0 whitespace-nowrap rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                SFF
-              </span>
-            )}
+            <SpecialFocusBadge facility={facility} className="shrink-0" />
           </span>
           <span className="truncate text-xs text-slate-500 dark:text-slate-400">{facility.city}, {facility.state}</span>
         </span>
@@ -107,11 +104,7 @@ export function FacilityRow({
             <div className="flex flex-wrap items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-100">
               <span>{facility.name}</span>
               <TypeBadge facility={facility} />
-              {facility.kind === 'snf' && facility.specialFocusFacility && (
-                <span className="whitespace-nowrap rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                  SFF
-                </span>
-              )}
+              <SpecialFocusBadge facility={facility} />
             </div>
             <div className="text-slate-600 dark:text-slate-300">{facility.address}</div>
             <div className="text-slate-600 dark:text-slate-300">

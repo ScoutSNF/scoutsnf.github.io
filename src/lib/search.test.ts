@@ -21,7 +21,8 @@ function snf(overrides: Partial<SnfRecord> = {}): SnfRecord {
     staffingRating: 3,
     qualityMeasureRating: 3,
     ownershipType: null,
-    specialFocusFacility: false,
+    specialFocusStatus: null,
+    specialFocusStatusRaw: null,
     processingDate: null,
     ...overrides
   }
@@ -89,11 +90,37 @@ describe('searchFacilities', () => {
   })
 
   it('filters by Special Focus Facility, ignoring hospitals entirely', () => {
-    const sffSnf = snf({ ccn: 'SFF1', specialFocusFacility: true })
-    const plainSnf = snf({ ccn: 'PLN1', specialFocusFacility: false })
+    const sffSnf = snf({ ccn: 'SFF1', specialFocusStatus: 'sff' })
+    const candidateSnf = snf({ ccn: 'CAND1', specialFocusStatus: 'candidate' })
+    const plainSnf = snf({ ccn: 'PLN1', specialFocusStatus: null })
     const anyHospital = hospital({ ccn: 'HOSP1' })
-    const hits = searchFacilities('', [sffSnf, plainSnf], [anyHospital], { sffOnly: true })
+    const hits = searchFacilities('', [sffSnf, candidateSnf, plainSnf], [anyHospital], { specialFocus: 'sff' })
     expect(hits.map((h) => h.facility.ccn)).toEqual(['SFF1'])
+  })
+
+  // The whole point of the split: a candidate must not answer a search for facilities actually in
+  // the program, which is what the previous boolean did for ~440 facilities nationally.
+  it('does not return SFF candidates when filtering for real SFFs', () => {
+    const candidateSnf = snf({ ccn: 'CAND1', specialFocusStatus: 'candidate' })
+    const hits = searchFacilities('', [candidateSnf], [], { specialFocus: 'sff' })
+    expect(hits).toEqual([])
+  })
+
+  it('filters for candidates alone, and for either together', () => {
+    const sffSnf = snf({ ccn: 'SFF1', specialFocusStatus: 'sff' })
+    const candidateSnf = snf({ ccn: 'CAND1', specialFocusStatus: 'candidate' })
+    const plainSnf = snf({ ccn: 'PLN1', specialFocusStatus: null })
+    const roster = [sffSnf, candidateSnf, plainSnf]
+
+    expect(searchFacilities('', roster, [], { specialFocus: 'candidate' }).map((h) => h.facility.ccn)).toEqual(['CAND1'])
+    expect(searchFacilities('', roster, [], { specialFocus: 'any' }).map((h) => h.facility.ccn).sort()).toEqual(['CAND1', 'SFF1'])
+  })
+
+  // A browser holding a roster cached before the split has only the old boolean.
+  it('reads the legacy specialFocusFacility flag from a stale cache as a full SFF', () => {
+    const legacy = snf({ ccn: 'OLD1', specialFocusStatus: undefined, specialFocusFacility: true })
+    const hits = searchFacilities('', [legacy], [], { specialFocus: 'sff' })
+    expect(hits.map((h) => h.facility.ccn)).toEqual(['OLD1'])
   })
 
   it('combines a text query with structured filters as AND', () => {

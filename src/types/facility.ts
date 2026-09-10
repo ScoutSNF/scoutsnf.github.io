@@ -1,5 +1,14 @@
 export type FacilityKind = 'snf' | 'hospital'
 
+/**
+ * CMS's Special Focus program has two distinct populations. 'sff' is a facility currently *in*
+ * the program (under 100 nationally, surveyed about twice a year, carrying real termination
+ * exposure); 'candidate' is one on the watch list eligible for selection (several hundred). Only
+ * an 'sff' gets the red hand on CMS Care Compare. Treating them as one boolean overstated the
+ * risk on roughly 440 facilities, so they stay separate everywhere -- badge, filter, and export.
+ */
+export type SpecialFocusStatus = 'sff' | 'candidate'
+
 export type HospitalType =
   | 'Acute Care'
   | 'Critical Access'
@@ -31,7 +40,16 @@ export interface SnfRecord {
   staffingRating: number | null
   qualityMeasureRating: number | null
   ownershipType: string | null
-  specialFocusFacility: boolean
+  specialFocusStatus: SpecialFocusStatus | null
+  /** CMS's verbatim `special_focus_status` cell. */
+  specialFocusStatusRaw: string | null
+  /**
+   * Legacy shape, still present on records cached in IndexedDB from before the SFF/candidate
+   * split. Read it through `getSpecialFocus()` rather than directly -- it disappears on its own
+   * once a browser picks up a roster published by the current pipeline.
+   * @deprecated
+   */
+  specialFocusFacility?: boolean
   /** CMS "data as of" date for this SNF's metrics. */
   processingDate: string | null
 }

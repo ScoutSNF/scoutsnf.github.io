@@ -3,7 +3,7 @@ import type { PortfolioMemberResolved, PortfolioReportData } from './portfolioRe
 import { CANNIBALIZATION_THRESHOLD_MILES, type PortfolioClusterResult, type MarketFacility } from './portfolioClusters'
 import type { Portfolio, SnfRecord, FacilityRecord } from '../types/facility'
 import type { FacilityYearRecord } from '../types/costReport'
-import { getBedsDisplay, getOccupancyDisplay } from './facilityDisplay'
+import { getBedsDisplay, getOccupancyDisplay, getSpecialFocus } from './facilityDisplay'
 import {
   EXCEL_COLORS,
   addTitle,
@@ -28,6 +28,16 @@ function snfOnly<T>(f: FacilityRecord, get: (s: SnfRecord) => T, fallback: T): T
   return f.kind === 'snf' ? get(f) : fallback
 }
 
+// Spelled out rather than "Yes"/"No" -- this column goes into reports that get read by people who
+// weren't in the room, and "Yes" against a facility that is only a candidate reads as a far more
+// severe finding than it is.
+function specialFocusExportLabel(s: SnfRecord): string {
+  const status = getSpecialFocus(s)
+  if (status === 'sff') return 'Special Focus Facility'
+  if (status === 'candidate') return 'SFF Candidate'
+  return 'No'
+}
+
 // Full per-facility detail, shared across the Summary, per-cluster Members, and Standalones
 // tables so "every field we have" reads consistently wherever a facility row appears.
 const DETAIL_HEADERS = [
@@ -40,7 +50,7 @@ const DETAIL_HEADERS = [
   'Address',
   'ZIP',
   'Ownership',
-  'SFF',
+  'Special Focus',
   'Health Insp.',
   'Staffing',
   'QM',
@@ -76,7 +86,7 @@ function detailRow(m: PortfolioMemberResolved): (string | number)[] {
     f.address,
     f.zip,
     snfOnly(f, (s) => s.ownershipType ?? 'N/A', 'N/A'),
-    snfOnly(f, (s) => (s.specialFocusFacility ? 'Yes' : 'No'), 'N/A'),
+    snfOnly(f, (s) => specialFocusExportLabel(s), 'N/A'),
     snfOnly(f, (s) => ratingValue(s.healthInspectionRating), 'N/A'),
     snfOnly(f, (s) => ratingValue(s.staffingRating), 'N/A'),
     snfOnly(f, (s) => ratingValue(s.qualityMeasureRating), 'N/A'),

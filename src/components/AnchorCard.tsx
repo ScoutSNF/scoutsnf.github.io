@@ -3,6 +3,7 @@ import type { FacilityRecord } from '../types/facility'
 import type { FacilityYearRecord } from '../types/costReport'
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
+import { SpecialFocusBadge } from './SpecialFocusBadge'
 import { BookmarkIcon } from './BookmarkIcon'
 import { InfoPopover } from './InfoPopover'
 import type { LegendKey } from '../lib/legend'
@@ -38,12 +39,7 @@ export function AnchorCard({
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold">{facility.name}</h1>
             <TypeBadge facility={facility} />
-            {facility.kind === 'snf' && facility.specialFocusFacility && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                Special Focus Facility
-                <InfoPopover legendKey="snf-sff" />
-              </span>
-            )}
+            <SpecialFocusBadge facility={facility} long withInfo className="px-2" />
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {facility.address}, {facility.city}, {facility.state} {facility.zip} · CCN {facility.ccn}

@@ -2,6 +2,7 @@ import type { FacilityRecord } from '../types/facility'
 import type { FacilityYearRecord } from '../types/costReport'
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
+import { SpecialFocusBadge } from './SpecialFocusBadge'
 import { BookmarkIcon } from './BookmarkIcon'
 import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
 
@@ -29,11 +30,7 @@ function Column({
           <div className="flex items-center gap-1.5">
             <span className="truncate font-semibold">{facility.name}</span>
             <TypeBadge facility={facility} />
-            {facility.kind === 'snf' && facility.specialFocusFacility && (
-              <span className="shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-900/40 dark:text-red-300">
-                SFF
-              </span>
-            )}
+            <SpecialFocusBadge facility={facility} className="shrink-0" />
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400">{distanceLabel}</div>
         </div>
