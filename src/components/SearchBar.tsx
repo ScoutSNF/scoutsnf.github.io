@@ -45,7 +45,7 @@ export function SearchBar({
   )
   const activeFilterCount = [stateFilter, kindFilter !== 'all', bedsMin, bedsMax, specialFocus, ownerQuery].filter(Boolean).length
 
-  const hits = useMemo(() => searchFacilities(query, snfs, hospitals, filters), [query, snfs, hospitals, filters])
+  const { hits, total } = useMemo(() => searchFacilities(query, snfs, hospitals, filters), [query, snfs, hospitals, filters])
 
   // Ownership is a SNF-only CMS dataset -- no point querying it while the Kind filter is narrowed
   // to Hospital, or while the filters panel isn't even open to show a field for it.
@@ -237,6 +237,14 @@ export function SearchBar({
               </button>
             </li>
           ))}
+
+          {/* Not a caption -- without it a capped list is indistinguishable from a complete one,
+              which is the one thing you cannot infer from the rows themselves. */}
+          {total > hits.length && (
+            <li className="border-t border-slate-200 px-4 py-1.5 text-[10px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+              Showing {hits.length} of {total.toLocaleString()}
+            </li>
+          )}
 
           {ownerSearchEnabled && ownerQuery.trim().length >= 3 && (
             <>
