@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 
 const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzLO2Z6YsfyOHu8333hnjrMDtJp9W_dUFdUEDtc5CJM9W1hm-agoKY6ATX72xE5XgZg/exec'
-const GATE_VERSION = '1' // bump to force everyone to sign in again
+const GATE_VERSION = '2' // bump to force everyone to sign in again
 const OFFLINE_GRACE_DAYS = 7
 
 const IDENTITY_KEY = `scoutsnf.identity.v${GATE_VERSION}`
