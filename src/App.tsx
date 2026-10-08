@@ -42,7 +42,6 @@ import { MapView } from './components/MapView'
 import { DealBoard } from './components/DealBoard'
 import { PortfolioReport } from './components/PortfolioReport'
 import { ExportBar } from './components/ExportBar'
-import { SettingsMenu } from './components/SettingsMenu'
 import { LegendPage } from './components/LegendPage'
 import { CompareCard } from './components/CompareCard'
 import { SideNav, MobileNav } from './components/AppNav'
@@ -484,14 +483,6 @@ export default function App() {
                 Updating…
               </span>
             )}
-            <SettingsMenu
-              snfFetchedAt={snfFetchedAt}
-              hospitalFetchedAt={hospitalFetchedAt}
-              rosterManifest={rosterManifest}
-              onRefresh={() => void loadAll(true)}
-              onRecheckCoordinates={recheckCoordinates}
-              onOpenLegend={() => setLegendOpen(true)}
-            />
           </div>
         </div>
         {errors.length > 0 && (
