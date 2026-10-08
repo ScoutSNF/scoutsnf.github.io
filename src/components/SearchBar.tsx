@@ -171,7 +171,7 @@ export function SearchBar({
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
-          placeholder="Search a facility by name, city, or ZIP…"
+          placeholder="Search by facility name, city, ZIP, or CCN…"
           className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base shadow-sm focus:border-brand focus:outline-none dark:border-slate-700 dark:bg-slate-900"
         />
         <button
@@ -376,7 +376,7 @@ export function SearchBar({
                     {unfilteredTotal === 1 ? 'y' : 'ies'}, but none pass the active filters.
                   </>
                 ) : query.trim().length >= 2 ? (
-                  <>Nothing matches “{query.trim()}”. Search looks at facility name, city and ZIP.</>
+                  <>Nothing matches “{query.trim()}”. Search looks at facility name, city, ZIP and exact CCN.</>
                 ) : (
                   <>No facilities match the active filters.</>
                 )}

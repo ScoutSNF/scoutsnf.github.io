@@ -60,6 +60,29 @@ describe('searchFacilities', () => {
     expect(searchFacilities('62450', [richland, helia, other], []).hits.map((h) => h.facility.ccn).sort()).toEqual(['H1', 'R1'])
   })
 
+  // CCN lookup was previously forbidden by docs/preservation.md; that was deliberately reversed.
+  it('finds a facility by its exact CCN', () => {
+    const target = snf({ ccn: '335565', name: 'Some Facility', city: 'Valatie', zip: '12184' })
+    const other = snf({ ccn: '015009', name: 'Other Facility', city: 'Russellville', zip: '35653' })
+    expect(searchFacilities('335565', [target, other], []).hits.map((h) => h.facility.ccn)).toEqual(['335565'])
+  })
+
+  it('ranks an exact CCN above any text match', () => {
+    const byCcn = snf({ ccn: '123456', name: 'Zzz Last Alphabetically' })
+    const byName = snf({ ccn: '999999', name: '123456 Care Center' })
+    const hits = searchFacilities('123456', [byCcn, byName], []).hits
+    expect(hits[0].facility.ccn).toBe('123456')
+  })
+
+  // ZIPs are five digits and CCNs six. Matching CCNs by prefix would let a half-typed ZIP resolve
+  // to an unrelated facility, so the CCN rule is exact-only.
+  it('does not let a partial CCN hijack ZIP matching', () => {
+    const zipMatch = snf({ ccn: '888888', name: 'Zip Place', zip: '12345' })
+    const ccnFacility = snf({ ccn: '123456', name: 'Ccn Place', zip: '99999' })
+    const hits = searchFacilities('12345', [zipMatch, ccnFacility], []).hits
+    expect(hits.map((h) => h.facility.ccn)).toEqual(['888888'])
+  })
+
   it('ranks a name match above a city match', () => {
     const nameMatch = snf({ ccn: 'N1', name: 'Olney Care Center', city: 'Chicago' })
     const cityMatch = snf({ ccn: 'C1', name: 'Somewhere Else', city: 'Olney' })

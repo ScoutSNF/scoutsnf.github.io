@@ -25,13 +25,19 @@ portfolio.
 
 ## Facility search
 
-- Free-text query matches and ranks by **name, city, and ZIP — nothing else.** There is no CCN
-  matching, and it should not be added. (This document previously claimed CCN was searchable.
-  That was verified false against production and current HEAD.)
-- Ranking order: name prefix > name substring > city prefix > city substring > ZIP prefix.
-  Ties break alphabetically by name.
+- Free-text query matches an **exact CCN**, then name, city and ZIP — nothing else.
+  **CCN lookup was added deliberately.** This entry previously read "there is no CCN matching, and
+  it should not be added", which the UI redesign brief overrode. The history is worth keeping: an
+  earlier appendix wrongly *claimed* CCN was already searchable, that claim was verified false, and
+  the correction then hardened into a prohibition. Adding it now is a decision, not a regression.
+- CCN matching is **exact only**, never by prefix: ZIPs are five digits and CCNs six, so prefix
+  matching would let a half-typed ZIP resolve to an unrelated facility's CCN.
+- Ranking order: exact CCN > name prefix > name substring > city prefix > city substring >
+  ZIP prefix. Ties break alphabetically by name.
 - Minimum 2 characters for a text query.
-- Filters: state, facility kind (SNF/hospital), bed-count min/max, Special Focus status
+- Filters: state, facility kind (SNF/hospital), bed-count min/max, minimum CMS overall stars
+  (with **Unrated by CMS** as a distinct option — an unrated facility is not a 1-star facility and
+  must never be folded into the bottom band), Special Focus status
   (SNF-only; no effect when kind is hospital). The Special Focus filter offers Any / Special
   Focus Facility / SFF Candidate / Either — these are different populations and selecting one
   must never return the other.

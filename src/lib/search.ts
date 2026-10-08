@@ -47,6 +47,13 @@ function norm(s: string): string {
   return s.toLowerCase().trim()
 }
 
+/**
+ * CMS certification numbers are six alphanumeric characters. Matched exactly rather than by
+ * prefix so a CCN lookup never competes with ZIP matching: ZIPs are five digits, CCNs six, and
+ * an exact-only rule keeps a partially-typed ZIP from silently resolving to some facility's CCN.
+ */
+const CCN_SHAPED = /^[0-9a-z]{6}$/
+
 export function passesFilters(facility: FacilityRecord, filters: SearchFilters): boolean {
   if (filters.state && facility.state !== filters.state) return false
   if (filters.kind && facility.kind !== filters.kind) return false
@@ -69,8 +76,9 @@ export function passesFilters(facility: FacilityRecord, filters: SearchFilters):
 }
 
 /**
- * Type-ahead over the cached national roster. Free-text query matches name, city, or ZIP (name
- * ranks highest); `filters` narrow by state/kind/bed count/Special Focus status and combine
+ * Type-ahead over the cached national roster. Free-text query matches an exact CCN, then name,
+ * city, or ZIP (an exact CCN ranks above all of them, then name); `filters` narrow by
+ * state/kind/bed count/CMS stars/Special Focus status and combine
  * with the text query as an AND. Either can drive results alone -- a bare filter set with no
  * text (e.g. "all SNFs in Ohio with 100+ beds") is a valid search on its own.
  */
@@ -103,7 +111,9 @@ export function searchFacilities(
       const name = norm(facility.name)
       const city = norm(facility.city)
       const zip = facility.zip
-      if (name.startsWith(q)) score = 100
+      // An exact CCN is an unambiguous identifier, so it outranks every fuzzy text match.
+      if (CCN_SHAPED.test(q) && norm(facility.ccn) === q) score = 200
+      else if (name.startsWith(q)) score = 100
       else if (name.includes(q)) score = 70
       else if (city.startsWith(q)) score = 50
       else if (city.includes(q)) score = 30
