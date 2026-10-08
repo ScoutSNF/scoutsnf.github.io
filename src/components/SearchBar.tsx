@@ -222,13 +222,17 @@ export function SearchBar({
 
       {filtersOpen && (
         <div className="mt-2 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+          {/* Wraps rather than forcing four equal columns: the segmented Kind control has an
+              intrinsic width that an equal share of a narrow pane cannot hold, and overflowing it
+              put "Hospital" underneath the next field. Every control here shares one height so the
+              row reads as one row. */}
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex min-w-[6.5rem] flex-1 flex-col gap-1 text-xs text-[--color-text-secondary]">
               State
               <select
                 value={stateFilter}
                 onChange={(e) => setStateFilter(e.target.value)}
-                className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="min-h-[2.5rem] rounded-[--radius-md] border border-[--color-border-strong] bg-[--color-surface] px-2 py-1.5 text-sm text-[--color-text]"
               >
                 <option value="">Any</option>
                 {states.map((s) => (
@@ -239,12 +243,18 @@ export function SearchBar({
               </select>
             </label>
 
-            <div className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex shrink-0 flex-col gap-1 text-xs text-[--color-text-secondary]">
               Kind
-              <div className="flex gap-1 rounded-md bg-slate-100 p-0.5 dark:bg-slate-800">
+              <div
+                role="radiogroup"
+                aria-label="Kind"
+                className="flex min-h-[2.5rem] items-stretch gap-1 rounded-[--radius-md] bg-[--color-surface-sunken] p-1"
+              >
                 {(['all', 'snf', 'hospital'] as const).map((k) => (
                   <button
                     key={k}
+                    role="radio"
+                    aria-checked={kindFilter === k}
                     onClick={() => {
                       setKindFilter(k)
                       if (k === 'hospital') {
@@ -252,8 +262,10 @@ export function SearchBar({
                         setOwnerQuery('')
                       }
                     }}
-                    className={`flex-1 rounded px-1.5 py-1 text-xs ${
-                      kindFilter === k ? 'bg-white text-slate-900 shadow dark:bg-slate-700 dark:text-slate-100' : ''
+                    className={`whitespace-nowrap rounded-[--radius-sm] px-2.5 text-xs font-medium ${
+                      kindFilter === k
+                        ? 'bg-[--color-surface] text-[--color-text] shadow-[--shadow-sm]'
+                        : 'text-[--color-text-secondary] hover:text-[--color-text]'
                     }`}
                   >
                     {k === 'all' ? 'All' : k === 'snf' ? 'SNF' : 'Hospital'}
@@ -262,24 +274,24 @@ export function SearchBar({
               </div>
             </div>
 
-            <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+            <label className="flex min-w-[5rem] flex-1 flex-col gap-1 text-xs text-[--color-text-secondary]">
               Beds min
               <input
                 type="number"
                 min={0}
                 value={bedsMin}
                 onChange={(e) => setBedsMin(e.target.value)}
-                className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="min-h-[2.5rem] w-full rounded-[--radius-md] border border-[--color-border-strong] bg-[--color-surface] px-2 py-1.5 text-sm text-[--color-text]"
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+            <label className="flex min-w-[5rem] flex-1 flex-col gap-1 text-xs text-[--color-text-secondary]">
               Beds max
               <input
                 type="number"
                 min={0}
                 value={bedsMax}
                 onChange={(e) => setBedsMax(e.target.value)}
-                className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                className="min-h-[2.5rem] w-full rounded-[--radius-md] border border-[--color-border-strong] bg-[--color-surface] px-2 py-1.5 text-sm text-[--color-text]"
               />
             </label>
           </div>
