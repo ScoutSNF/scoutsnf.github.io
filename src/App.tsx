@@ -30,7 +30,11 @@ import type { SavedFacilityRow } from './data/db'
 import { withinRadius } from './lib/market'
 import { resolvePortfolioMembers, buildPortfolioReport } from './lib/portfolioReport'
 import { SearchBar } from './components/SearchBar'
-import { AnchorCard } from './components/AnchorCard'
+import { AnchorCard, OwnershipSection } from './components/AnchorCard'
+import { DetailTabs } from './components/DetailTabs'
+import { CompareTray } from './components/CompareTray'
+import { CommandMenu, MOD_KEY } from './components/CommandMenu'
+import { MAX_COMPARE } from './components/CompareTable'
 import { CostReportCard } from './components/CostReportCard'
 import { RadiusSlider } from './components/RadiusSlider'
 import { ResultsSection } from './components/ResultsSection'
@@ -41,9 +45,14 @@ import { ExportBar } from './components/ExportBar'
 import { SettingsMenu } from './components/SettingsMenu'
 import { LegendPage } from './components/LegendPage'
 import { CompareCard } from './components/CompareCard'
-import { BottomNav } from './components/BottomNav'
-
-type View = 'board' | 'search'
+import { SideNav, MobileNav } from './components/AppNav'
+import { SettingsPage } from './components/SettingsPage'
+import { useHashRoute } from './hooks/useHashRoute'
+import type { AppView } from './lib/routing'
+import { SearchEmptyState } from './components/SearchEmptyState'
+import { MarketMediansCard } from './components/MarketMediansCard'
+import { computeMarketMedians, describeStandouts } from './lib/marketMedians'
+import { readRecents, recordRecent, clearRecents, type RecentFacility } from './lib/recentFacilities'
 
 export default function App() {
   const [snfs, setSnfs] = useState<SnfRecord[]>([])
@@ -59,17 +68,51 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false)
   const [refreshStage, setRefreshStage] = useState('')
   const [rosterManifest, setRosterManifest] = useState<RosterManifest | null>(null)
-  const [legendOpen, setLegendOpen] = useState(false)
+
   const [errors, setErrors] = useState<string[]>([])
 
   const [saved, setSaved] = useState<SavedFacilityRow[]>([])
   const [savedLoaded, setSavedLoaded] = useState(false)
-  const [view, setView] = useState<View>('search')
   const [initialViewSet, setInitialViewSet] = useState(false)
 
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
   const [memberIdsByPortfolio, setMemberIdsByPortfolio] = useState<Map<string, Set<string>>>(new Map())
-  const [viewingPortfolioId, setViewingPortfolioId] = useState<string | null>(null)
+
+
+  /**
+   * The URL hash is the source of truth for which view and which facility are open, so Back and
+   * Forward work and a facility can be linked to. `anchor` below is derived from it rather than
+   * held independently -- two sources of truth for "what am I looking at" is how the Legend page
+   * previously got stranded behind a nav that had quietly changed the view underneath it.
+   */
+  const [route, navigate] = useHashRoute()
+  const view = route.view
+  const legendOpen = route.view === 'legend'
+  const viewingPortfolioId = route.view === 'portfolio' ? route.portfolioId : null
+
+  const goToView = useCallback(
+    (v: AppView) => navigate({ view: v, facilityId: null, portfolioId: null }),
+    [navigate]
+  )
+  const setLegendOpen = useCallback(
+    (open: boolean) => navigate({ view: open ? 'legend' : 'search', facilityId: null, portfolioId: null }),
+    [navigate]
+  )
+  const setViewingPortfolioId = useCallback(
+    (id: string | null) =>
+      navigate({ view: id ? 'portfolio' : 'board', facilityId: null, portfolioId: id }),
+    [navigate]
+  )
+  const openFacility = useCallback(
+    (facility: FacilityRecord, replace = false) =>
+      navigate(
+        { view: 'search', facilityId: `${facility.kind}:${facility.ccn}`, portfolioId: null },
+        replace
+      ),
+    [navigate]
+  )
+
+  const [recents, setRecents] = useState<RecentFacility[]>(() => readRecents())
 
   const [anchor, setAnchor] = useState<FacilityRecord | null>(null)
   /** Where to return when the back link is used: 'plain' = ScoutBoard's top-level list, a portfolio
@@ -77,6 +120,25 @@ export default function App() {
   const [returnTarget, setReturnTarget] = useState<'plain' | string | null>(null)
   const [radiusMiles, setRadiusMiles] = useState(10)
   const [tab, setTab] = useState<'list' | 'map'>('list')
+  const [detailTab, setDetailTab] = useState('overview')
+  const [commandOpen, setCommandOpen] = useState(false)
+
+  /**
+   * Facilities picked for side-by-side comparison. Held in App rather than inside the tray so a
+   * selection survives navigating between markets, which is the only way picking four facilities
+   * from different searches can work.
+   */
+  const [compareSet, setCompareSet] = useState<FacilityRecord[]>([])
+
+  const toggleCompare = useCallback((facility: FacilityRecord) => {
+    setCompareSet((prev) => {
+      const id = `${facility.kind}:${facility.ccn}`
+      const existing = prev.findIndex((f) => `${f.kind}:${f.ccn}` === id)
+      if (existing >= 0) return prev.filter((_, i) => i !== existing)
+      if (prev.length >= MAX_COMPARE) return prev
+      return [...prev, facility]
+    })
+  }, [])
   const [facilityTab, setFacilityTab] = useState<'snf' | 'hospital'>('snf')
   const [mapFilter, setMapFilter] = useState<'all' | 'snf' | 'hospital'>('all')
   const [compareFacility, setCompareFacility] = useState<{ facility: FacilityRecord; distanceMiles: number } | null>(null)
@@ -180,13 +242,51 @@ export default function App() {
     // instantly on the cached, non-blocking-refresh path, racing ahead of the separate
     // refreshSaved() call and defaulting to Search even when saved facilities exist.
     if (initialViewSet || loading || !savedLoaded) return
-    setView(saved.length > 0 ? 'board' : 'search')
     setInitialViewSet(true)
-  }, [loading, saved, initialViewSet, savedLoaded])
+    // Only choose a landing view when the visitor did not ask for one. A pasted link or a Back
+    // navigation already names the view, and must not be overridden by this preference.
+    if (window.location.hash && window.location.hash !== '#/') return
+    if (saved.length > 0) navigate({ view: 'board', facilityId: null, portfolioId: null }, true)
+  }, [loading, saved, initialViewSet, savedLoaded, navigate])
 
   useEffect(() => {
     setCompareFacility(null)
   }, [anchor])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setCommandOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  /**
+   * Resolve the routed facility against the loaded roster.
+   *
+   * Runs again when the roster arrives, so a link opened cold (hash parsed before any data exists)
+   * still lands on its facility rather than silently showing an empty Search. An id that matches
+   * nothing -- a retired CCN, a typo in a pasted link -- clears the anchor rather than leaving the
+   * previous facility on screen pretending to be the requested one.
+   */
+  useEffect(() => {
+    if (!route.facilityId) {
+      setAnchor(null)
+      return
+    }
+    const [kind, ccn] = route.facilityId.split(':')
+    const found: FacilityRecord | undefined =
+      kind === 'snf' ? snfs.find((f) => f.ccn === ccn) : hospitals.find((f) => f.ccn === ccn)
+    if (found) {
+      setAnchor(found)
+      setRecents(recordRecent(found))
+    } else if (snfs.length > 0 && hospitals.length > 0) {
+      setAnchor(null)
+    }
+  }, [route.facilityId, snfs, hospitals])
 
   const snfResults = useMemo(() => {
     if (!anchor || anchor.latitude == null || anchor.longitude == null) return []
@@ -219,7 +319,54 @@ export default function App() {
     return [...snfResults, ...hospitalResults]
   }, [mapFilter, snfResults, hospitalResults])
 
+  const marketMedians = useMemo(() => {
+    if (!anchor) return null
+    return computeMarketMedians(
+      anchor,
+      snfResults.map((r) => r.facility),
+      costReportsByCcn
+    )
+  }, [anchor, snfResults, costReportsByCcn])
+
+  const marketStandouts = useMemo(
+    () => (anchor && marketMedians ? describeStandouts(marketMedians, anchor) : []),
+    [anchor, marketMedians]
+  )
+
   const savedIds = useMemo(() => new Set(saved.map((s) => s.id)), [saved])
+  const compareIds = useMemo(() => new Set(compareSet.map((f) => `${f.kind}:${f.ccn}`)), [compareSet])
+
+  /**
+   * A concrete facility for the empty state's "Try an example" button, so a first-time visitor can
+   * see a populated market without having to think of a facility name.
+   *
+   * Picks from the densest cluster of SNFs in the roster rather than the first row: the first row
+   * is an Alabama facility with two neighbours inside 10 miles, which demonstrates an empty market
+   * analysis. Bucketing by a coarse lat/lon grid is one pass over the roster and finds a genuinely
+   * competitive market; cost-report history is preferred within that cell so the financial panels
+   * are populated too.
+   */
+  const exampleFacility = useMemo(() => {
+    const geocoded = snfs.filter((s) => s.latitude != null && s.longitude != null)
+    if (geocoded.length === 0) return null
+
+    const cells = new Map<string, SnfRecord[]>()
+    for (const s of geocoded) {
+      const key = `${Math.round(s.latitude! * 4)}:${Math.round(s.longitude! * 4)}`
+      const bucket = cells.get(key)
+      if (bucket) bucket.push(s)
+      else cells.set(key, [s])
+    }
+
+    let densest: SnfRecord[] = []
+    for (const bucket of cells.values()) {
+      if (bucket.length > densest.length) densest = bucket
+    }
+    if (densest.length === 0) return geocoded[0]
+
+    const withCostReport = densest.find((s) => (costReportsByCcn.get(s.ccn)?.length ?? 0) >= 2)
+    return withCostReport ?? densest[0]
+  }, [snfs, costReportsByCcn])
 
   async function toggleSave(facility: FacilityRecord, radiusOverride?: number) {
     const id = `${facility.kind}:${facility.ccn}`
@@ -240,9 +387,8 @@ export default function App() {
 
   function openFromBoard(facility: FacilityRecord, savedRadius: number) {
     setReturnTarget(viewingPortfolioId ?? 'plain')
-    setAnchor(facility)
     setRadiusMiles(savedRadius)
-    setView('search')
+    openFacility(facility)
   }
 
   // Stable identity so MapView's marker-drawing effect doesn't rerun (and its now-separate
@@ -292,7 +438,7 @@ export default function App() {
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
         <p className="text-sm text-slate-500 dark:text-slate-400">{loadStage}</p>
         {slowLoad && (
-          <p className="max-w-xs text-xs text-slate-400 dark:text-slate-500">
+          <p className="max-w-xs text-xs text-slate-500 dark:text-slate-400">
             Taking longer than usual — this can happen on a slow or unstable connection. Still working, no need to
             restart the app.
           </p>
@@ -301,19 +447,38 @@ export default function App() {
     )
   }
 
+  const navigateFromNav = (v: AppView) => {
+    setReturnTarget(null)
+    goToView(v)
+  }
+
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
+    <div className="flex min-h-screen">
+      <SideNav view={view} savedCount={saved.length} onNavigate={navigateFromNav} />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+      <header className="sticky top-0 z-20 border-b border-[--color-border] bg-[--color-surface]/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 lg:max-w-[96rem]">
+          <div className="flex items-center gap-2 lg:hidden">
             <img src={`${import.meta.env.BASE_URL}brand/icon.svg`} alt="" className="h-8 w-8 rounded-lg" />
             <span className="text-lg font-bold">ScoutSNF</span>
           </div>
+          <h1 className="hidden text-base font-semibold text-[--color-text] lg:block">
+            {view === 'board' ? 'ScoutBoard' : view === 'portfolio' ? (viewingPortfolio?.name ?? 'Portfolio') : view === 'legend' ? 'Sources & definitions' : view === 'settings' ? 'Settings' : 'Facility search'}
+          </h1>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCommandOpen(true)}
+              className="hidden items-center gap-2 rounded-[--radius-md] border border-[--color-border-strong] px-2.5 py-1.5 text-sm text-[--color-text-secondary] hover:bg-[--color-surface-hover] sm:flex"
+            >
+              <span>Quick find</span>
+              <kbd className="rounded-[--radius-sm] border border-[--color-border] px-1 font-sans text-xs">{MOD_KEY}</kbd>
+              <kbd className="rounded-[--radius-sm] border border-[--color-border] px-1 font-sans text-xs">K</kbd>
+            </button>
             {refreshing && (
               <span
                 title={refreshStage || 'Updating data…'}
-                className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500"
+                className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
               >
                 <span className="h-3 w-3 animate-spin rounded-full border-2 border-brand border-t-transparent" />
                 Updating…
@@ -330,7 +495,7 @@ export default function App() {
           </div>
         </div>
         {errors.length > 0 && (
-          <div className="mx-auto max-w-3xl px-4 pb-2">
+          <div className="mx-auto w-full max-w-3xl px-4 pb-2 lg:max-w-[96rem]">
             {errors.map((e, i) => (
               <p key={i} className="rounded bg-red-50 px-2 py-1 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300">
                 {e}
@@ -342,7 +507,17 @@ export default function App() {
 
       {legendOpen ? (
         <LegendPage onBack={() => setLegendOpen(false)} />
-      ) : view === 'board' ? (
+      ) : view === 'settings' ? (
+        <SettingsPage
+          snfFetchedAt={snfFetchedAt}
+          hospitalFetchedAt={hospitalFetchedAt}
+          rosterManifest={rosterManifest}
+          refreshing={refreshing}
+          onRefresh={() => void loadAll(true)}
+          onRecheckCoordinates={recheckCoordinates}
+          onOpenLegend={() => setLegendOpen(true)}
+        />
+      ) : view === 'board' || view === 'portfolio' ? (
         viewingPortfolio && portfolioReportData ? (
           <PortfolioReport
             portfolio={viewingPortfolio}
@@ -361,10 +536,10 @@ export default function App() {
             saved={saved}
             snfs={snfs}
             hospitals={hospitals}
-            snfFetchedAt={snfFetchedAt}
-            hospitalFetchedAt={hospitalFetchedAt}
             portfolios={portfolios}
             memberIdsByPortfolio={memberIdsByPortfolio}
+            compareIds={compareIds}
+            onToggleCompare={toggleCompare}
             onOpen={openFromBoard}
             onRemove={async (row) => {
               await removeSavedFacility(row.kind, row.ccn)
@@ -390,46 +565,138 @@ export default function App() {
           />
         )
       ) : (
-        <main className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
-          {returnTarget !== null && (
-            <button
-              onClick={() => {
-                setViewingPortfolioId(returnTarget === 'plain' ? null : returnTarget)
+        <main className={`mx-auto w-full max-w-3xl flex-col gap-4 p-4 ${compareSet.length > 0 ? 'pb-44 lg:pb-32' : 'pb-24 lg:pb-8'} lg:grid lg:max-w-[96rem] lg:grid-cols-[minmax(26rem,32rem)_minmax(0,1fr)] lg:items-start lg:gap-6 flex`}>
+          {/* Left pane on desktop: search, the selected facility and its financials. The right
+              pane takes the market list/map, which is what actually benefits from width. Below
+              lg both panes stack into the original single column. */}
+          <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-10rem)] lg:overflow-y-auto lg:pr-1">
+            {returnTarget !== null && (
+              <button
+                onClick={() => {
+                  const target = returnTarget
+                  setReturnTarget(null)
+                  setViewingPortfolioId(target === 'plain' ? null : target)
+                }}
+                className="self-start text-sm text-slate-600 hover:text-brand dark:text-slate-300"
+              >
+                ← Back to {returnTarget === 'plain' ? 'ScoutBoard' : (portfolios.find((p) => p.id === returnTarget)?.name ?? 'ScoutBoard')}
+              </button>
+            )}
+
+            <SearchBar
+              snfs={snfs}
+              hospitals={hospitals}
+              dataReady={snfs.length > 0 && hospitals.length > 0}
+              loadError={errors[0] ?? null}
+              onSelect={(facility) => {
                 setReturnTarget(null)
-                setView('board')
+                openFacility(facility)
               }}
-              className="self-start text-sm text-slate-500 hover:text-brand dark:text-slate-400"
-            >
-              ← Back to {returnTarget === 'plain' ? 'ScoutBoard' : (portfolios.find((p) => p.id === returnTarget)?.name ?? 'ScoutBoard')}
-            </button>
-          )}
+            />
 
-          <SearchBar
-            snfs={snfs}
-            hospitals={hospitals}
-            onSelect={(facility) => {
-              setReturnTarget(null)
-              setAnchor(facility)
-            }}
-          />
-
-          {anchor && (
-            <>
-              <AnchorCard
-                facility={anchor}
-                saved={savedIds.has(`${anchor.kind}:${anchor.ccn}`)}
-                onToggleSave={() => toggleSave(anchor)}
-                actions={<ExportBar items={[...snfResults, ...hospitalResults]} anchorName={anchor.name} />}
-                costReportRecords={costReportsByCcn.get(anchor.ccn)}
+            {!anchor && (
+              <SearchEmptyState
+                recents={recents}
+                onOpenRecent={(r) => {
+                  setReturnTarget(null)
+                  navigate({ view: 'search', facilityId: r.id, portfolioId: null })
+                }}
+                onClearRecents={() => setRecents(clearRecents())}
+                onTryExample={
+                  exampleFacility
+                    ? () => {
+                        setReturnTarget(null)
+                        openFacility(exampleFacility)
+                      }
+                    : undefined
+                }
               />
+            )}
 
-              <CostReportCard records={costReportsByCcn.get(anchor.ccn) ?? []} kind={anchor.kind} />
+            {anchor && (
+              <>
+                {/* Labelled so a selected facility still on screen during a fruitless search reads
+                    as "what I was looking at", not as a result for the query just typed. */}
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <span>Currently viewing</span>
+                  <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                  <button
+                    onClick={() => {
+                      setReturnTarget(null)
+                      navigate({ view: 'search', facilityId: null, portfolioId: null })
+                    }}
+                    className="font-medium normal-case tracking-normal text-slate-500 hover:text-brand dark:text-slate-400 dark:hover:text-sky-300"
+                  >
+                    Clear
+                  </button>
+                </div>
+
+                <AnchorCard
+                  facility={anchor}
+                  saved={savedIds.has(`${anchor.kind}:${anchor.ccn}`)}
+                  onToggleSave={() => toggleSave(anchor)}
+                  actions={<ExportBar items={[...snfResults, ...hospitalResults]} anchorName={anchor.name} />}
+                  costReportRecords={costReportsByCcn.get(anchor.ccn)}
+                />
+
+                {/* Panels stay mounted and hidden, so switching back to Financials keeps expanded
+                    rows, chart tooltips and scroll position rather than rebuilding the section. */}
+                <DetailTabs
+                  active={detailTab}
+                  onChange={setDetailTab}
+                  tabs={[
+                    {
+                      id: 'overview',
+                      label: 'Overview',
+                      content: (
+                        <div className="flex flex-col gap-3">
+                          {marketMedians && (
+                            <MarketMediansCard
+                              medians={marketMedians}
+                              standouts={marketStandouts}
+                              anchor={anchor}
+                              radiusMiles={radiusMiles}
+                            />
+                          )}
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'financials',
+                      label: 'Financials',
+                      hint: (costReportsByCcn.get(anchor.ccn)?.length ?? 0) === 0 ? 'none filed' : undefined,
+                      content:
+                        (costReportsByCcn.get(anchor.ccn)?.length ?? 0) === 0 ? (
+                          <p className="text-sm text-[--color-text-secondary]">
+                            No HCRIS cost report is on file for this facility in the published dataset. That is an
+                            absence in the source data, not a zero.
+                          </p>
+                        ) : (
+                          <CostReportCard records={costReportsByCcn.get(anchor.ccn) ?? []} kind={anchor.kind} />
+                        )
+                    },
+                    {
+                      id: 'ownership',
+                      label: 'Ownership',
+                      content: <OwnershipSection facility={anchor} />
+                    }
+                  ]}
+                />
+              </>
+            )}
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-4">
+            {anchor && (
+              <>
 
               <RadiusSlider
                 value={radiusMiles}
                 onChange={setRadiusMiles}
                 facilityCount={snfResults.length + hospitalResults.length}
               />
+
+
 
               <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
                 <button onClick={() => setTab('list')} className={`rounded-md px-3 py-1 ${tab === 'list' ? 'bg-white shadow dark:bg-slate-700' : ''}`}>
@@ -493,8 +760,8 @@ export default function App() {
                               }
                               className={`rounded-full border px-2.5 py-1 text-xs ${
                                 active
-                                  ? 'border-brand bg-brand/10 text-brand'
-                                  : 'border-slate-300 text-slate-400 dark:border-slate-700'
+                                  ? 'border-brand bg-brand/10 text-brand dark:border-sky-400 dark:bg-sky-400/10 dark:text-sky-300'
+                                  : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-600 dark:text-slate-300'
                               }`}
                             >
                               {t}
@@ -541,7 +808,11 @@ export default function App() {
                       onToggleSave={toggleSave}
                       costReportsByCcn={costReportsByCcn}
                       onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
+                      onAddToCompare={toggleCompare}
+                      compareIds={compareIds}
                       onViewOnMap={handleViewOnMap}
+                      onSelect={handleMapSelect}
+                      selectedId={compareFacility ? `${compareFacility.facility.kind}:${compareFacility.facility.ccn}` : null}
                     />
                   ) : (
                     <>
@@ -561,8 +832,8 @@ export default function App() {
                               }
                               className={`rounded-full border px-2.5 py-1 text-xs ${
                                 active
-                                  ? 'border-brand bg-brand/10 text-brand'
-                                  : 'border-slate-300 text-slate-400 dark:border-slate-700'
+                                  ? 'border-brand bg-brand/10 text-brand dark:border-sky-400 dark:bg-sky-400/10 dark:text-sky-300'
+                                  : 'border-slate-300 text-slate-600 hover:border-slate-400 dark:border-slate-600 dark:text-slate-300'
                               }`}
                             >
                               {t}
@@ -577,7 +848,11 @@ export default function App() {
                         onToggleSave={toggleSave}
                         costReportsByCcn={costReportsByCcn}
                         onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
+                        onAddToCompare={toggleCompare}
+                        compareIds={compareIds}
                         onViewOnMap={handleViewOnMap}
+                        onSelect={handleMapSelect}
+                        selectedId={compareFacility ? `${compareFacility.facility.kind}:${compareFacility.facility.ccn}` : null}
                       />
                     </>
                   )}
@@ -585,17 +860,36 @@ export default function App() {
               )}
             </>
           )}
+          </div>
         </main>
       )}
-      <BottomNav
-        view={view}
-        onChangeView={(v) => {
-          if (v === 'board') setViewingPortfolioId(null)
-          if (v === 'search') setReturnTarget(null)
-          setView(v)
+      </div>
+
+      <CommandMenu
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        snfs={snfs}
+        hospitals={hospitals}
+        onSelectFacility={(f) => {
+          setReturnTarget(null)
+          openFacility(f)
         }}
-        savedCount={saved.length}
+        onNavigate={navigateFromNav}
+        extraActions={
+          compareSet.length > 0
+            ? [{ id: 'clear-compare', label: `Clear comparison (${compareSet.length})`, hint: 'Action', run: () => setCompareSet([]) }]
+            : []
+        }
       />
+
+      <CompareTray
+        selected={compareSet}
+        costReportsByCcn={costReportsByCcn}
+        onRemove={toggleCompare}
+        onClear={() => setCompareSet([])}
+      />
+
+      <MobileNav view={view} savedCount={saved.length} onNavigate={navigateFromNav} />
     </div>
   )
 }

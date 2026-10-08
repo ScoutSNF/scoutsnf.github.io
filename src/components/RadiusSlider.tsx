@@ -17,7 +17,7 @@ export function RadiusSlider({
         <label htmlFor="radius" className="font-medium">
           Radius: {value} mi
         </label>
-        <span className="text-xs text-slate-500 dark:text-slate-400">{facilityCount} facilities</span>
+        <span className="text-sm tabular-nums text-[--color-text-secondary]">{facilityCount} facilities</span>
       </div>
       <input
         id="radius"
@@ -29,7 +29,8 @@ export function RadiusSlider({
         onChange={(e) => onChange(STEPS[Number(e.target.value)])}
         className="w-full accent-brand"
       />
-      <div className="flex justify-between text-[10px] text-slate-400 dark:text-slate-500">
+      <p className="text-xs text-[--color-text-muted]">Straight-line miles, not drive time.</p>
+      <div className="flex justify-between text-[10px] text-[--color-text-muted]">
         {STEPS.map((s) => (
           <span key={s}>{s}</span>
         ))}

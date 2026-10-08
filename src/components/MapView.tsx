@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import type { FacilityRecord, FacilityWithDistance } from '../types/facility'
 import { MAP_COLORS as COLORS, dotIcon } from '../lib/mapIcons'
+import { titleCaseName } from '../lib/facilityDisplay'
 
 export function MapView({
   anchor,
@@ -74,7 +75,7 @@ export function MapView({
       }).addTo(layer)
       const typeLabel = facility.kind === 'hospital' ? facility.hospitalType : ''
       const popupDiv = document.createElement('div')
-      popupDiv.innerHTML = `<strong>${facility.name}</strong><br/>${distanceMiles.toFixed(2)} mi${typeLabel ? ' · ' + typeLabel : ''}<br/>`
+      popupDiv.innerHTML = `<strong>${titleCaseName(facility.name)}</strong><br/>${distanceMiles.toFixed(2)} mi${typeLabel ? ' · ' + typeLabel : ''}<br/>`
       const btn = document.createElement('button')
       btn.textContent = 'View details'
       btn.style.cssText = 'color:#0f4c5c;text-decoration:underline;font-size:12px;background:none;border:none;padding:0;cursor:pointer'

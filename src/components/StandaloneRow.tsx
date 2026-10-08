@@ -1,5 +1,6 @@
 import type { StandaloneFacility } from '../lib/portfolioClusters'
 import { PortfolioMemberRow } from './PortfolioMemberRow'
+import { titleCaseName } from '../lib/facilityDisplay'
 
 export function StandaloneRow({
   standalone,
@@ -18,8 +19,8 @@ export function StandaloneRow({
     <div>
       <PortfolioMemberRow member={standalone.member} onClick={onClick} badge={badge} />
       {standalone.hasLocation && standalone.nearestPortfolioMember && (
-        <p className="-mt-1 pb-1.5 text-xs text-slate-400 dark:text-slate-500">
-          Nearest portfolio facility: {standalone.nearestPortfolioMember.row.name}, {standalone.nearestPortfolioMiles} mi
+        <p className="-mt-1 pb-1.5 text-xs text-slate-500 dark:text-slate-400">
+          Nearest portfolio facility: {titleCaseName(standalone.nearestPortfolioMember.row.name)}, {standalone.nearestPortfolioMiles} mi
         </p>
       )}
     </div>

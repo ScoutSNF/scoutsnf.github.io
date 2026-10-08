@@ -1,28 +1,52 @@
 import type { FacilityKind } from '../types/facility'
 
-const COLORS: Record<FacilityKind, string> = {
-  snf: '#0ea5e9',
-  hospital: '#ef4444'
+/**
+ * A neutral monogram, used wherever a facility has no real photo.
+ *
+ * This replaced two pieces of clip art (a figure-with-cane glyph for SNFs, a medical cross for
+ * hospitals) that repeated down every row of a list and read as decoration rather than
+ * information. Initials at least identify the row they belong to. Kind is still carried by the
+ * TypeBadge beside the name and by marker colour on the map, so nothing is lost by making this
+ * tile quiet.
+ */
+function initialsFor(name: string): string {
+  const words = name
+    .replace(/[^A-Za-z0-9\s-]/g, ' ')
+    .split(/[\s-]+/)
+    .filter((w) => w.length > 0 && !/^(of|the|at|and|for|on|in|to|a|an|by)$/i.test(w))
+
+  if (words.length === 0) return '?'
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
+  return (words[0][0] + words[1][0]).toUpperCase()
 }
 
-/** "elderly" glyph from Google's Material Symbols (Apache-2.0, github.com/google/material-design-icons). */
-const SNF_ICON_PATH =
-  'M538-754q-30 0-51.5-21.5T465-827q0-30 21.5-51.5T538-900q30 0 51.5 21.5T611-827q0 30-21.5 51.5T538-754Zm146.5 344.5Q680-414 680-420v-33q-42-11-87.5-42T521-568q-12 34-18.5 75t-4.5 73l91 129q3 4 4.5 8.5t1.5 9.5v203q0 13-8.5 21.5T565-40q-13 0-21.5-8.5T535-70v-189l-85-95-9 145q0 3-6 16L338-64q-8 10-20 12t-22-6q-10-8-12-20t6-22l86-115-8-191q-2-52 5.5-109.5T397-617l-97 56v81q0 13-8.5 21.5T270-450q-13 0-21.5-8.5T240-480v-99q0-8 4-15t11-11l152-87q17-10 32.5-15t29.5-5q27 0 48.5 21t41.5 66q20 46 59 75.5t94 46.5q7-4 13.5-5.5T739-510q23 0 42 18.5t19 41.5v395q0 6-4.5 10.5T785-40q-6 0-10.5-4.5T770-55v-395q0-12-9-21t-21-9q-12 0-21 9t-9 21v30q0 6-4.5 10.5T695-405q-6 0-10.5-4.5Z'
-
 export function PlaceholderImage({ kind, name, className }: { kind: FacilityKind; name: string; className?: string }) {
+  const initials = initialsFor(name)
+
   return (
-    <svg viewBox="0 0 64 64" className={className} role="img" aria-label={`${name} placeholder image`}>
-      <rect width="64" height="64" rx="8" fill={COLORS[kind]} />
-      {kind === 'hospital' ? (
-        <g fill="white">
-          <rect x="28" y="14" width="8" height="36" rx="2" />
-          <rect x="14" y="28" width="36" height="8" rx="2" />
-        </g>
-      ) : (
-        <svg x="8" y="8" width="48" height="48" viewBox="0 -960 960 960">
-          <path fill="white" d={SNF_ICON_PATH} />
-        </svg>
-      )}
+    <svg viewBox="0 0 64 64" className={className} role="img" aria-label={name}>
+      <rect
+        width="64"
+        height="64"
+        rx="8"
+        className={kind === 'hospital' ? 'fill-red-50 dark:fill-red-950/40' : 'fill-slate-100 dark:fill-slate-800'}
+      />
+      <text
+        x="32"
+        y="33"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={initials.length > 1 ? 26 : 30}
+        fontWeight="600"
+        className={
+          kind === 'hospital'
+            ? 'fill-red-700 dark:fill-red-300'
+            : 'fill-slate-500 dark:fill-slate-400'
+        }
+        style={{ fontFamily: 'inherit', letterSpacing: '0.02em' }}
+      >
+        {initials}
+      </text>
     </svg>
   )
 }

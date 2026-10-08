@@ -4,7 +4,7 @@ import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
 import { SpecialFocusBadge } from './SpecialFocusBadge'
 import { BookmarkIcon } from './BookmarkIcon'
-import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
+import { titleCaseName, getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
 
 function Column({
   facility,
@@ -28,7 +28,7 @@ function Column({
       <div className="flex items-start justify-between gap-1">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="truncate font-semibold">{facility.name}</span>
+            <span className="truncate font-semibold" title={titleCaseName(facility.name)}>{titleCaseName(facility.name)}</span>
             <TypeBadge facility={facility} />
             <SpecialFocusBadge facility={facility} className="shrink-0" />
           </div>
@@ -44,18 +44,18 @@ function Column({
       </div>
       <dl className="mt-2 space-y-1 text-sm">
         <div className="flex items-center justify-between">
-          <dt className="text-xs text-slate-400">Beds</dt>
+          <dt className="text-xs text-slate-500 dark:text-slate-400">Beds</dt>
           <dd className="tabular-nums">{getBedsDisplay(facility)}</dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-xs text-slate-400">Occupancy</dt>
+          <dt className="text-xs text-slate-500 dark:text-slate-400">Occupancy</dt>
           <dd className="text-right tabular-nums">
             {occupancyText}
-            {facility.kind === 'snf' && occupancy.asOfLabel && <span className="ml-1 text-[10px] text-slate-400">{occupancy.asOfLabel}</span>}
+            {facility.kind === 'snf' && occupancy.asOfLabel && <span className="ml-1 text-[10px] text-slate-500 dark:text-slate-400">{occupancy.asOfLabel}</span>}
           </dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt className="text-xs text-slate-400">Overall</dt>
+          <dt className="text-xs text-slate-500 dark:text-slate-400">Overall</dt>
           <dd>
             <StarRating rating={facility.overallRating} />
           </dd>
@@ -63,19 +63,19 @@ function Column({
         {facility.kind === 'snf' && (
           <>
             <div className="flex items-center justify-between">
-              <dt className="text-xs text-slate-400">Health insp.</dt>
+              <dt className="text-xs text-slate-500 dark:text-slate-400">Health insp.</dt>
               <dd>
                 <StarRating rating={facility.healthInspectionRating} />
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-xs text-slate-400">Staffing</dt>
+              <dt className="text-xs text-slate-500 dark:text-slate-400">Staffing</dt>
               <dd>
                 <StarRating rating={facility.staffingRating} />
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-xs text-slate-400">Quality</dt>
+              <dt className="text-xs text-slate-500 dark:text-slate-400">Quality</dt>
               <dd>
                 <StarRating rating={facility.qualityMeasureRating} />
               </dd>
@@ -107,8 +107,8 @@ export function CompareCard({
   return (
     <div className="rounded-xl border-2 border-brand/40 bg-white p-4 shadow-sm dark:bg-slate-900">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Comparing to anchor</p>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" title="Close comparison">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Comparing to anchor</p>
+        <button onClick={onClose} className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" title="Close comparison">
           ✕
         </button>
       </div>

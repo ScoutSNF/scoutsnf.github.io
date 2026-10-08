@@ -17,7 +17,7 @@ export function CappedList<T>({
   const [expanded, setExpanded] = useState(false)
 
   if (items.length === 0) {
-    return <p className="px-2 py-1.5 text-xs text-slate-400 dark:text-slate-500">{emptyLabel}</p>
+    return <p className="px-2 py-1.5 text-xs text-slate-500 dark:text-slate-400">{emptyLabel}</p>
   }
 
   const visible = expanded ? items : items.slice(0, cap)

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FacilityWithDistance, FacilityRecord } from '../types/facility'
-import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
+import { titleCaseName, getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
 
 const HEADERS = ['Name', 'Type', 'City', 'State', 'Distance (mi)', 'Beds', 'Occupancy', 'Rating', 'CCN']
 const COLUMN_WIDTHS = [34, 12, 16, 7, 12, 8, 12, 8, 10]
@@ -23,7 +23,7 @@ export function ExportBar({ items, anchorName }: { items: FacilityWithDistance<F
     try {
       const { buildSimpleWorkbook, downloadBlob } = await import('../lib/simpleWorkbook')
       const rows = items.map(({ facility, distanceMiles }) => [
-        facility.name,
+        titleCaseName(facility.name),
         facility.kind === 'snf' ? 'SNF' : facility.hospitalType,
         facility.city,
         facility.state,
@@ -34,7 +34,7 @@ export function ExportBar({ items, anchorName }: { items: FacilityWithDistance<F
         facility.ccn
       ])
       const blob = await buildSimpleWorkbook({
-        title: `Nearby facilities — ${anchorName}`,
+        title: `Nearby facilities — ${titleCaseName(anchorName)}`,
         subtitle: `Generated ${new Date().toLocaleString()} · ${items.length} facilit${items.length === 1 ? 'y' : 'ies'}`,
         sheetName: 'Results',
         headers: HEADERS,

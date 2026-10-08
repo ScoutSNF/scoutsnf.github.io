@@ -86,7 +86,7 @@ export function SettingsMenu({
 
       {open && (
         <div className="absolute right-0 z-20 mt-1 w-72 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Data</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Data</p>
           <div className="mb-3 space-y-1 text-xs text-slate-500 dark:text-slate-400">
             <div>SNF roster: {snfDateLabel}</div>
             {snfRosterError && (
@@ -111,7 +111,7 @@ export function SettingsMenu({
           >
             Refresh data…
           </button>
-          <p className="mt-1.5 text-[10px] text-slate-400">
+          <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
             Pulls the latest roster published by the automated data pipeline (runs weekly). Fast —
             no live CMS/Census lookups happen in your browser.
           </p>
@@ -124,7 +124,7 @@ export function SettingsMenu({
             >
               {recheckStatus === 'running' ? 'Checking…' : 'Re-check facility locations'}
             </button>
-            <p className="mt-1.5 text-[10px] text-slate-400">
+            <p className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400">
               {recheckStatus === 'done' && recheckResult
                 ? recheckResult.collisionCount === 0
                   ? `No duplicate locations found${recheckResult.checkedAgainstLatest ? ' in the latest published roster' : ' in cached data (latest roster unreachable)'}.`

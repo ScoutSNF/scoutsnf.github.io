@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import type { SnfRecord, HospitalRecord } from '../types/facility'
 import type { PortfolioMemberResolved } from '../lib/portfolioReport'
 import { MAP_COLORS, dotIcon } from '../lib/mapIcons'
+import { clusterByGrid, clusterIcon } from '../lib/mapCluster'
+import { titleCaseName } from '../lib/facilityDisplay'
 
 export function PortfolioMap({
   members,
@@ -27,6 +29,9 @@ export function PortfolioMap({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
   const layerRef = useRef<L.LayerGroup | null>(null)
+  /** Bumped on zoom so the marker effect re-clusters. Grid clustering is defined in screen space,
+   *  so without this the groups computed at the initial zoom would stay frozen as you zoom in. */
+  const [zoomTick, setZoomTick] = useState(0)
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -37,7 +42,10 @@ export function PortfolioMap({
     }).addTo(map)
     mapRef.current = map
     layerRef.current = L.layerGroup().addTo(map)
+    const onZoom = () => setZoomTick((n) => n + 1)
+    map.on('zoomend', onZoom)
     return () => {
+      map.off('zoomend', onZoom)
       map.remove()
       mapRef.current = null
     }
@@ -76,13 +84,13 @@ export function PortfolioMap({
         icon: dotIcon(MAP_COLORS.anchor, 12, isSelected),
         zIndexOffset: isSelected ? 1000 : 500
       }).addTo(layer)
-      marker.bindPopup(`<strong>${m.row.name}</strong><br/>Portfolio facility${isSelected ? ' (selected)' : ''}`)
+      marker.bindPopup(`<strong>${titleCaseName(m.row.name)}</strong><br/>Portfolio facility${isSelected ? ' (selected)' : ''}`)
       marker.on('click', () => onSelect(id))
     }
 
     function bindComparePopup(marker: L.Marker, facility: SnfRecord | HospitalRecord, distanceMiles: number, anchorName: string) {
       const popupDiv = document.createElement('div')
-      popupDiv.innerHTML = `<strong>${facility.name}</strong><br/>${distanceMiles} mi from ${anchorName}<br/>`
+      popupDiv.innerHTML = `<strong>${titleCaseName(facility.name)}</strong><br/>${distanceMiles} mi from ${anchorName}<br/>`
       if (onCompare) {
         const btn = document.createElement('button')
         btn.textContent = 'Compare to anchor'
@@ -115,29 +123,57 @@ export function PortfolioMap({
         L.polyline(line, { color: MAP_COLORS.highlightRing, weight: 3, dashArray: '10 6', opacity: 1 }).addTo(layer)
       }
 
-      for (const c of competitors) {
-        if (c.facility.latitude == null || c.facility.longitude == null) continue
-        bounds.push([c.facility.latitude, c.facility.longitude])
-        const highlighted = isHighlighted(c.facility)
-        const marker = L.marker([c.facility.latitude, c.facility.longitude], {
-          icon: dotIcon(MAP_COLORS.snf, 12, highlighted),
-          zIndexOffset: highlighted ? 900 : 0
-        }).addTo(layer)
-        bindComparePopup(marker, c.facility, c.distanceMiles, selectedMember.row.name)
+      // Competitors and hospitals are clustered; portfolio members above deliberately are not,
+      // since they are the subject of this view and must stay individually visible. A highlighted
+      // facility is also kept out of its cluster so "compare to anchor" never hides its own pin.
+      type Nearby = { facility: SnfRecord | HospitalRecord; distanceMiles: number }
+      const clusterable: Nearby[] = []
+
+      for (const n of [...competitors, ...hospitals] as Nearby[]) {
+        if (n.facility.latitude == null || n.facility.longitude == null) continue
+        bounds.push([n.facility.latitude, n.facility.longitude])
+        if (isHighlighted(n.facility)) {
+          const marker = L.marker([n.facility.latitude, n.facility.longitude], {
+            icon: dotIcon(MAP_COLORS[n.facility.kind], 12, true),
+            zIndexOffset: 900
+          }).addTo(layer)
+          bindComparePopup(marker, n.facility, n.distanceMiles, selectedMember.row.name)
+        } else {
+          clusterable.push(n)
+        }
       }
-      for (const h of hospitals) {
-        if (h.facility.latitude == null || h.facility.longitude == null) continue
-        bounds.push([h.facility.latitude, h.facility.longitude])
-        const highlighted = isHighlighted(h.facility)
-        const marker = L.marker([h.facility.latitude, h.facility.longitude], {
-          icon: dotIcon(MAP_COLORS.hospital, 12, highlighted),
-          zIndexOffset: highlighted ? 900 : 0
+
+      for (const cluster of clusterByGrid(
+        map,
+        clusterable.map((n) => ({ lat: n.facility.latitude!, lon: n.facility.longitude!, item: n }))
+      )) {
+        if (cluster.points.length === 1) {
+          const n = cluster.points[0].item
+          const marker = L.marker([cluster.lat, cluster.lon], {
+            icon: dotIcon(MAP_COLORS[n.facility.kind], 12, false)
+          }).addTo(layer)
+          bindComparePopup(marker, n.facility, n.distanceMiles, selectedMember.row.name)
+          continue
+        }
+
+        const snfCount = cluster.points.filter((p) => p.item.facility.kind === 'snf').length
+        const hospitalCount = cluster.points.length - snfCount
+        // Coloured by whichever kind dominates the cluster, so the SNF/hospital read survives
+        // clustering instead of every group going a neutral grey.
+        const color = snfCount >= hospitalCount ? MAP_COLORS.snf : MAP_COLORS.hospital
+        const marker = L.marker([cluster.lat, cluster.lon], {
+          icon: clusterIcon(cluster.points.length, color)
         }).addTo(layer)
-        bindComparePopup(marker, h.facility, h.distanceMiles, selectedMember.row.name)
+        marker.bindPopup(
+          `<strong>${cluster.points.length} facilities</strong><br/>${snfCount} SNF${snfCount === 1 ? '' : 's'}, ${hospitalCount} hospital${hospitalCount === 1 ? '' : 's'}<br/><em>Zoom in to separate</em>`
+        )
+        marker.on('click', () => {
+          map.setView([cluster.lat, cluster.lon], Math.min(map.getZoom() + 2, 18))
+        })
       }
     }
 
-  }, [members, selectedId, radiusMiles, competitors, hospitals, onSelect, onCompare, highlight])
+  }, [members, selectedId, radiusMiles, competitors, hospitals, onSelect, onCompare, highlight, zoomTick])
 
   // Fitting the view is split into its own effect, deliberately narrower than the marker-drawing
   // one above: it should only run when the selected facility, the portfolio's membership, or the

@@ -12,18 +12,32 @@ the correction is permanent, rather than working around it.
 
 ## Navigation
 
-Two views, both reachable from the bottom nav: **ScoutBoard** (with a saved-count badge when
-non-zero) and **Search**.
+Four destinations, reachable from persistent navigation at every width: **Search**, **ScoutBoard**
+(with a saved-count badge when non-zero), **Sources** and **Settings**. A sidebar rail at >=1024px,
+a thumb-reachable bottom bar below it; both render the same destination list, so a view can never
+be reachable from one and stranded in the other.
+
+The URL hash is the source of truth for the current view and facility, so browser Back/Forward
+restore state and a facility can be linked to. GitHub Pages cannot rewrite unknown paths, so links
+are hash-shaped (`#/facility/snf/335565`) rather than real paths. A shared link carries only a
+facility kind and CCN — both public CMS identifiers — and never a name, email, device id, note or
+portfolio.
 
 ## Facility search
 
-- Free-text query matches and ranks by **name, city, and ZIP — nothing else.** There is no CCN
-  matching, and it should not be added. (This document previously claimed CCN was searchable.
-  That was verified false against production and current HEAD.)
-- Ranking order: name prefix > name substring > city prefix > city substring > ZIP prefix.
-  Ties break alphabetically by name.
+- Free-text query matches an **exact CCN**, then name, city and ZIP — nothing else.
+  **CCN lookup was added deliberately.** This entry previously read "there is no CCN matching, and
+  it should not be added", which the UI redesign brief overrode. The history is worth keeping: an
+  earlier appendix wrongly *claimed* CCN was already searchable, that claim was verified false, and
+  the correction then hardened into a prohibition. Adding it now is a decision, not a regression.
+- CCN matching is **exact only**, never by prefix: ZIPs are five digits and CCNs six, so prefix
+  matching would let a half-typed ZIP resolve to an unrelated facility's CCN.
+- Ranking order: exact CCN > name prefix > name substring > city prefix > city substring >
+  ZIP prefix. Ties break alphabetically by name.
 - Minimum 2 characters for a text query.
-- Filters: state, facility kind (SNF/hospital), bed-count min/max, Special Focus status
+- Filters: state, facility kind (SNF/hospital), bed-count min/max, minimum CMS overall stars
+  (with **Unrated by CMS** as a distinct option — an unrated facility is not a 1-star facility and
+  must never be folded into the bottom band), Special Focus status
   (SNF-only; no effect when kind is hospital). The Special Focus filter offers Any / Special
   Focus Facility / SFF Candidate / Either — these are different populations and selecting one
   must never return the other.
@@ -121,11 +135,25 @@ All of these must remain present:
   storage, and force everyone back through the gate.
 - A 7-day offline grace period applies when the endpoint is unreachable.
 
+## Accessibility
+
+- Star ratings expose their numeric value to assistive technology. The five glyphs are
+  `aria-hidden` and the value is announced once as text — rendering five ★ characters with the
+  meaning carried only by fill colour reported the same rating for every facility.
+- Every interactive element has a visible focus ring, and touch targets are at least 44px.
+- `prefers-reduced-motion` is respected.
+
 ## Platform behavior
 
-- Installable PWA, works offline via the service worker.
-- Theme follows the OS preference. `tailwind.config.js` intentionally has **no** `darkMode` key
-  (Tailwind's `media` strategy). No manual theme toggle.
+- Installable PWA. The app shell and the self-published roster/cost-report JSON are cached, so a
+  previously loaded browser works offline against dated cached data. **OpenStreetMap tiles are
+  deliberately not cached** — their usage policy forbids pre-caching — so offline means cached
+  data, not an offline map.
+- Theme defaults to the OS preference, and Settings offers an explicit light / dark / Match system
+  choice. **Reversed deliberately** — this entry previously read "no manual theme toggle", which
+  the UI redesign brief overrode. An explicit choice stamps `data-theme` on `<html>`; 'system'
+  writes nothing and lets the media query govern. The stored preference survives a `GATE_VERSION`
+  flush, since a display setting is not identity.
 - Mobile-first layout; bottom nav respects `env(safe-area-inset-bottom)`.
 - Brand tokens: `brand` #0f4c5c, `gold` #e9c46a, `snf` #0ea5e9, `hospital` #ef4444.
 - Link-preview cards (WhatsApp etc.) must render without white corners.

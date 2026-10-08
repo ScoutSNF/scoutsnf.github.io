@@ -38,6 +38,19 @@ export default defineConfig({
         navigateFallback: undefined,
         runtimeCaching: [
           {
+            // Our own published roster/cost-report JSON. Not in globPatterns (which covers only
+            // js/css/html/svg/png/ico), so without this the data layer had no service-worker cache
+            // at all and offline depended entirely on whatever IndexedDB already held. Same-origin
+            // and self-published, so unlike map tiles there is no third-party policy at stake.
+            urlPattern: ({ sameOrigin, url }) => sameOrigin && url.pathname.includes('/data/'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'roster-data',
+              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          {
             urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',
             options: {
@@ -47,7 +60,15 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^https:\/\/(data\.cms\.gov|geocoding\.geo\.census\.gov|healthdata\.gov|tile\.openstreetmap\.org|.*\.tile\.openstreetmap\.org)\/.*/,
+            // Only the owner/manager lookup still goes out from the browser; the roster, hospital
+            // and bed datasets are resolved in CI and served as same-origin static JSON.
+            //
+            // OpenStreetMap tiles are deliberately NOT cached here. Their usage policy forbids
+            // bulk downloading and offline/pre-caching of tiles, and a runtime cache over panning
+            // and zooming is exactly that. Removing them also stops the app implying an offline
+            // map it is not permitted to provide. Census and healthdata hosts are gone from this
+            // list because nothing in the browser calls them any more.
+            urlPattern: /^https:\/\/data\.cms\.gov\/.*/,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'external-data-cache',
