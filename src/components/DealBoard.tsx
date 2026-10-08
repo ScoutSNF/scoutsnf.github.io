@@ -5,6 +5,7 @@ import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
 import { getBedsDisplay, getOccupancyDisplay, getCmsAsOf, formatDate, titleCaseName } from '../lib/facilityDisplay'
 import { BookmarkIcon } from './BookmarkIcon'
+import { BoardViews, type BoardView, type ResolvedSaved } from './BoardViews'
 
 export function DealBoard({
   saved,
@@ -16,6 +17,8 @@ export function DealBoard({
   onRemove,
   onNotesChange,
   onMove,
+  compareIds,
+  onToggleCompare,
   onCreatePortfolio,
   onDeletePortfolio,
   onToggleMember,
@@ -30,6 +33,8 @@ export function DealBoard({
   onRemove: (row: SavedFacilityRow) => void
   onNotesChange: (row: SavedFacilityRow, notes: string) => void
   onMove: (row: SavedFacilityRow, direction: -1 | 1) => void
+  compareIds: Set<string>
+  onToggleCompare: (facility: FacilityRecord) => void
   onCreatePortfolio: (name: string) => void
   onDeletePortfolio: (id: string) => void
   onToggleMember: (portfolioId: string, facilityId: string, inPortfolio: boolean) => void
@@ -38,6 +43,7 @@ export function DealBoard({
   const [newPortfolioOpen, setNewPortfolioOpen] = useState(false)
   const [newPortfolioName, setNewPortfolioName] = useState('')
   const [assignOpenFor, setAssignOpenFor] = useState<string | null>(null)
+  const [boardView, setBoardView] = useState<BoardView>('cards')
 
   function resolve(row: SavedFacilityRow): FacilityRecord | undefined {
     return row.kind === 'snf' ? snfs.find((s) => s.ccn === row.ccn) : hospitals.find((h) => h.ccn === row.ccn)
@@ -58,7 +64,7 @@ export function DealBoard({
   const unfiledSaved = saved.filter((row) => !assignedFacilityIds.has(row.id))
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 pb-24 lg:max-w-6xl">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4 pb-44 lg:max-w-6xl lg:pb-32">
       <h1 className="text-xl font-bold">ScoutBoard</h1>
 
       <section className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
@@ -137,7 +143,22 @@ export function DealBoard({
           portfolio to bring it back here.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <>
+        <BoardViews
+          items={unfiledSaved.map<ResolvedSaved>((row) => ({ row, facility: resolve(row) }))}
+          view={boardView}
+          onViewChange={setBoardView}
+          onOpen={onOpen}
+          onRemove={onRemove}
+          compareIds={compareIds}
+          onToggleCompare={onToggleCompare}
+        />
+
+        <details className="rounded-[--radius-lg] border border-[--color-border] bg-[--color-surface] p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-[--color-text]">
+            Notes and portfolio assignment
+          </summary>
+        <div className="mt-3 flex flex-col gap-3">
           {unfiledSaved.map((row, i) => {
             const facility = resolve(row)
             const occ = facility ? getOccupancyDisplay(facility) : null
@@ -226,6 +247,8 @@ export function DealBoard({
             )
           })}
         </div>
+        </details>
+        </>
       )}
     </div>
   )

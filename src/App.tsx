@@ -32,6 +32,8 @@ import { resolvePortfolioMembers, buildPortfolioReport } from './lib/portfolioRe
 import { SearchBar } from './components/SearchBar'
 import { AnchorCard, OwnershipSection } from './components/AnchorCard'
 import { DetailTabs } from './components/DetailTabs'
+import { CompareTray } from './components/CompareTray'
+import { MAX_COMPARE } from './components/CompareTable'
 import { CostReportCard } from './components/CostReportCard'
 import { RadiusSlider } from './components/RadiusSlider'
 import { ResultsSection } from './components/ResultsSection'
@@ -118,6 +120,23 @@ export default function App() {
   const [radiusMiles, setRadiusMiles] = useState(10)
   const [tab, setTab] = useState<'list' | 'map'>('list')
   const [detailTab, setDetailTab] = useState('overview')
+
+  /**
+   * Facilities picked for side-by-side comparison. Held in App rather than inside the tray so a
+   * selection survives navigating between markets, which is the only way picking four facilities
+   * from different searches can work.
+   */
+  const [compareSet, setCompareSet] = useState<FacilityRecord[]>([])
+
+  const toggleCompare = useCallback((facility: FacilityRecord) => {
+    setCompareSet((prev) => {
+      const id = `${facility.kind}:${facility.ccn}`
+      const existing = prev.findIndex((f) => `${f.kind}:${f.ccn}` === id)
+      if (existing >= 0) return prev.filter((_, i) => i !== existing)
+      if (prev.length >= MAX_COMPARE) return prev
+      return [...prev, facility]
+    })
+  }, [])
   const [facilityTab, setFacilityTab] = useState<'snf' | 'hospital'>('snf')
   const [mapFilter, setMapFilter] = useState<'all' | 'snf' | 'hospital'>('all')
   const [compareFacility, setCompareFacility] = useState<{ facility: FacilityRecord; distanceMiles: number } | null>(null)
@@ -302,6 +321,7 @@ export default function App() {
   )
 
   const savedIds = useMemo(() => new Set(saved.map((s) => s.id)), [saved])
+  const compareIds = useMemo(() => new Set(compareSet.map((f) => `${f.kind}:${f.ccn}`)), [compareSet])
 
   /**
    * A concrete facility for the empty state's "Try an example" button, so a first-time visitor can
@@ -497,6 +517,8 @@ export default function App() {
             hospitals={hospitals}
             portfolios={portfolios}
             memberIdsByPortfolio={memberIdsByPortfolio}
+            compareIds={compareIds}
+            onToggleCompare={toggleCompare}
             onOpen={openFromBoard}
             onRemove={async (row) => {
               await removeSavedFacility(row.kind, row.ccn)
@@ -522,7 +544,7 @@ export default function App() {
           />
         )
       ) : (
-        <main className="mx-auto w-full max-w-3xl flex-col gap-4 p-4 pb-24 lg:grid lg:max-w-[96rem] lg:grid-cols-[minmax(26rem,32rem)_minmax(0,1fr)] lg:items-start lg:gap-6 flex">
+        <main className={`mx-auto w-full max-w-3xl flex-col gap-4 p-4 ${compareSet.length > 0 ? 'pb-44 lg:pb-32' : 'pb-24 lg:pb-8'} lg:grid lg:max-w-[96rem] lg:grid-cols-[minmax(26rem,32rem)_minmax(0,1fr)] lg:items-start lg:gap-6 flex`}>
           {/* Left pane on desktop: search, the selected facility and its financials. The right
               pane takes the market list/map, which is what actually benefits from width. Below
               lg both panes stack into the original single column. */}
@@ -765,6 +787,8 @@ export default function App() {
                       onToggleSave={toggleSave}
                       costReportsByCcn={costReportsByCcn}
                       onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
+                      onAddToCompare={toggleCompare}
+                      compareIds={compareIds}
                       onViewOnMap={handleViewOnMap}
                       onSelect={handleMapSelect}
                       selectedId={compareFacility ? `${compareFacility.facility.kind}:${compareFacility.facility.ccn}` : null}
@@ -803,6 +827,8 @@ export default function App() {
                         onToggleSave={toggleSave}
                         costReportsByCcn={costReportsByCcn}
                         onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
+                        onAddToCompare={toggleCompare}
+                        compareIds={compareIds}
                         onViewOnMap={handleViewOnMap}
                         onSelect={handleMapSelect}
                         selectedId={compareFacility ? `${compareFacility.facility.kind}:${compareFacility.facility.ccn}` : null}
@@ -817,6 +843,13 @@ export default function App() {
         </main>
       )}
       </div>
+
+      <CompareTray
+        selected={compareSet}
+        costReportsByCcn={costReportsByCcn}
+        onRemove={toggleCompare}
+        onClear={() => setCompareSet([])}
+      />
 
       <MobileNav view={view} savedCount={saved.length} onNavigate={navigateFromNav} />
     </div>

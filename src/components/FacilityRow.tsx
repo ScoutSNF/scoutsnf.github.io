@@ -22,7 +22,9 @@ export function FacilityRow({
   onViewOnMap,
   onSelect,
   selected = false,
-  showOccupancy = true
+  showOccupancy = true,
+  onAddToCompare,
+  inCompare = false
 }: {
   facility: FacilityRecord
   distanceMiles: number
@@ -39,6 +41,8 @@ export function FacilityRow({
   /** False when no row in this list has an occupancy figure, so the column is dropped rather than
    *  rendering a stripe of N/A that reads as missing work. */
   showOccupancy?: boolean
+  onAddToCompare?: () => void
+  inCompare?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -241,6 +245,15 @@ export function FacilityRow({
               {onCompare && (
                 <button onClick={onCompare} className="text-sky-700 hover:underline dark:text-sky-300">
                   Compare to anchor
+                </button>
+              )}
+              {onAddToCompare && (
+                <button
+                  onClick={onAddToCompare}
+                  aria-pressed={inCompare}
+                  className="text-sky-700 hover:underline dark:text-sky-300"
+                >
+                  {inCompare ? 'Remove from comparison' : 'Add to comparison'}
                 </button>
               )}
               {onViewOnMap && (

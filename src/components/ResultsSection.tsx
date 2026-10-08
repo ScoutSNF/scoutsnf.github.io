@@ -14,7 +14,9 @@ export function ResultsSection({
   onCompare,
   onViewOnMap,
   onSelect,
-  selectedId
+  selectedId,
+  onAddToCompare,
+  compareIds
 }: {
   title?: string
   items: FacilityWithDistance<FacilityRecord>[]
@@ -26,6 +28,8 @@ export function ResultsSection({
   onSelect?: (facility: FacilityRecord, distanceMiles: number) => void
   /** `${kind}:${ccn}` of the shared selection, so the open row and its marker agree. */
   selectedId?: string | null
+  onAddToCompare?: (facility: FacilityRecord) => void
+  compareIds?: Set<string>
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('distance')
   const [asc, setAsc] = useState(true)
@@ -165,6 +169,8 @@ export function ResultsSection({
                   onSelect={onSelect ? () => onSelect(facility, distanceMiles) : undefined}
                   selected={selectedId === `${facility.kind}:${facility.ccn}`}
                   showOccupancy={hasAnyOccupancy}
+                  onAddToCompare={onAddToCompare ? () => onAddToCompare(facility) : undefined}
+                  inCompare={compareIds?.has(`${facility.kind}:${facility.ccn}`) ?? false}
                 />
               ))}
             </div>
