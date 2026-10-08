@@ -71,8 +71,6 @@ export default function App() {
   const [errors, setErrors] = useState<string[]>([])
 
   const [saved, setSaved] = useState<SavedFacilityRow[]>([])
-  const [savedLoaded, setSavedLoaded] = useState(false)
-  const [initialViewSet, setInitialViewSet] = useState(false)
 
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
   const [memberIdsByPortfolio, setMemberIdsByPortfolio] = useState<Map<string, Set<string>>>(new Map())
@@ -116,6 +114,9 @@ export default function App() {
    * destination, so this is plain UI state and deliberately not in the URL -- a shared link should
    * not carry whether the sender happened to have the list open, and `view` already says which
    * portfolio is being looked at.
+   *
+   * Always starts collapsed, including for someone with saved facilities. Nothing opens it but a
+   * tap on ScoutBoard.
    */
   const [boardOpen, setBoardOpen] = useState(false)
 
@@ -225,7 +226,7 @@ export default function App() {
 
   useEffect(() => {
     void loadAll(false)
-    void refreshSaved().then(() => setSavedLoaded(true))
+    void refreshSaved()
     void refreshPortfolios()
     // Supplementary, not required for the app to function -- doesn't gate the main loading screen,
     // and quietly stays empty if the pipeline hasn't produced the file yet.
@@ -243,21 +244,6 @@ export default function App() {
     const timer = setTimeout(() => setSlowLoad(true), 10_000)
     return () => clearTimeout(timer)
   }, [loading])
-
-  useEffect(() => {
-    // Gated on savedLoaded (not just `loading`) -- `loading` can now flip to false almost
-    // instantly on the cached, non-blocking-refresh path, racing ahead of the separate
-    // refreshSaved() call and defaulting to Search even when saved facilities exist.
-    if (initialViewSet || loading || !savedLoaded) return
-    setInitialViewSet(true)
-    // Only choose a landing view when the visitor did not ask for one. A pasted link or a Back
-    // navigation already names the view, and must not be overridden by this preference.
-    if (window.location.hash && window.location.hash !== '#/') return
-    // There is no ScoutBoard page to land on any more, and the portfolio to land on is a guess.
-    // Opening the disclosure instead puts the saved work one tap away without choosing for them,
-    // and without the risk of landing on an empty Unfiled page.
-    if (saved.length > 0) setBoardOpen(true)
-  }, [loading, saved, initialViewSet, savedLoaded])
 
   useEffect(() => {
     setCompareFacility(null)

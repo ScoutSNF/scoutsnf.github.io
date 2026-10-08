@@ -25,6 +25,9 @@ facility count, plus a "+ New portfolio" action. It reads as selected while open
 picked under it; picking a portfolio moves the selection to that row and opens the portfolio's
 landing page. Tapping it again collapses the list. Only one navigation item is ever highlighted.
 
+**It starts collapsed on every load**, including for someone who has saved facilities and
+portfolios. Nothing opens it but a tap.
+
 **ScoutBoard previously had an overview page at `#/board`. It was deleted deliberately** — its
 route falls through to Search so old links still land somewhere. Everything it owned survives, on
 other pages; see "ScoutBoard (saved facilities)" below for where.
