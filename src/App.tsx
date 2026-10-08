@@ -39,7 +39,7 @@ import { CostReportCard } from './components/CostReportCard'
 import { RadiusSlider } from './components/RadiusSlider'
 import { ResultsSection } from './components/ResultsSection'
 import { MapView } from './components/MapView'
-import { DealBoard } from './components/DealBoard'
+import { UnfiledPage } from './components/UnfiledPage'
 import { PortfolioReport } from './components/PortfolioReport'
 import { ExportBar } from './components/ExportBar'
 import { LegendPage } from './components/LegendPage'
@@ -99,7 +99,7 @@ export default function App() {
   )
   const setViewingPortfolioId = useCallback(
     (id: string | null) =>
-      navigate({ view: id ? 'portfolio' : 'board', facilityId: null, portfolioId: id }),
+      navigate({ view: id ? 'portfolio' : 'unfiled', facilityId: null, portfolioId: id }),
     [navigate]
   )
   const openFacility = useCallback(
@@ -110,6 +110,14 @@ export default function App() {
       ),
     [navigate]
   )
+
+  /**
+   * Whether the sidebar's portfolio list is showing. ScoutBoard is a disclosure rather than a
+   * destination, so this is plain UI state and deliberately not in the URL -- a shared link should
+   * not carry whether the sender happened to have the list open, and `view` already says which
+   * portfolio is being looked at.
+   */
+  const [boardOpen, setBoardOpen] = useState(false)
 
   const [recents, setRecents] = useState<RecentFacility[]>(() => readRecents())
 
@@ -245,8 +253,11 @@ export default function App() {
     // Only choose a landing view when the visitor did not ask for one. A pasted link or a Back
     // navigation already names the view, and must not be overridden by this preference.
     if (window.location.hash && window.location.hash !== '#/') return
-    if (saved.length > 0) navigate({ view: 'board', facilityId: null, portfolioId: null }, true)
-  }, [loading, saved, initialViewSet, savedLoaded, navigate])
+    // There is no ScoutBoard page to land on any more, and the portfolio to land on is a guess.
+    // Opening the disclosure instead puts the saved work one tap away without choosing for them,
+    // and without the risk of landing on an empty Unfiled page.
+    if (saved.length > 0) setBoardOpen(true)
+  }, [loading, saved, initialViewSet, savedLoaded])
 
   useEffect(() => {
     setCompareFacility(null)
@@ -424,6 +435,19 @@ export default function App() {
     [portfolios, viewingPortfolioId]
   )
 
+  /** Saved facilities in no portfolio: both the Unfiled view's contents and its nav row's count. */
+  const unfiledSaved = useMemo(() => {
+    const assigned = new Set<string>()
+    for (const ids of memberIdsByPortfolio.values()) for (const id of ids) assigned.add(id)
+    return saved.filter((row) => !assigned.has(row.id))
+  }, [saved, memberIdsByPortfolio])
+
+  const portfolioNavItems = useMemo(
+    () =>
+      portfolios.map((p) => ({ id: p.id, name: p.name, count: memberIdsByPortfolio.get(p.id)?.size ?? 0 })),
+    [portfolios, memberIdsByPortfolio]
+  )
+
   const portfolioReportData = useMemo(() => {
     if (!viewingPortfolio) return null
     const memberIds = [...(memberIdsByPortfolio.get(viewingPortfolio.id) ?? [])]
@@ -451,9 +475,25 @@ export default function App() {
     goToView(v)
   }
 
+  const navProps = {
+    view,
+    portfolioId: viewingPortfolioId,
+    savedCount: saved.length,
+    portfolios: portfolioNavItems,
+    unfiledCount: unfiledSaved.length,
+    boardOpen,
+    onToggleBoard: () => setBoardOpen((v) => !v),
+    onNavigate: navigateFromNav,
+    onOpenPortfolio: (id: string) => {
+      setReturnTarget(null)
+      setViewingPortfolioId(id)
+    },
+    onNewPortfolio: (name: string) => void handleCreatePortfolio(name)
+  }
+
   return (
     <div className="flex min-h-screen">
-      <SideNav view={view} savedCount={saved.length} onNavigate={navigateFromNav} />
+      <SideNav {...navProps} />
 
       <div className="flex min-w-0 flex-1 flex-col">
       <header className="sticky top-0 z-20 border-b border-[--color-border] bg-[--color-surface]/95 backdrop-blur">
@@ -463,7 +503,7 @@ export default function App() {
             <span className="text-lg font-bold">ScoutSNF</span>
           </div>
           <h1 className="hidden text-base font-semibold text-[--color-text] lg:block">
-            {view === 'board' ? 'ScoutBoard' : view === 'portfolio' ? (viewingPortfolio?.name ?? 'Portfolio') : view === 'legend' ? 'Sources & definitions' : view === 'settings' ? 'Settings' : 'Facility search'}
+            {view === 'unfiled' ? 'Unfiled' : view === 'portfolio' ? (viewingPortfolio?.name ?? 'Portfolio') : view === 'legend' ? 'Sources & definitions' : view === 'settings' ? 'Settings' : 'Facility search'}
           </h1>
           <div className="flex items-center gap-3">
             <button
@@ -508,7 +548,7 @@ export default function App() {
           onRecheckCoordinates={recheckCoordinates}
           onOpenLegend={() => setLegendOpen(true)}
         />
-      ) : view === 'board' || view === 'portfolio' ? (
+      ) : view === 'unfiled' || view === 'portfolio' ? (
         viewingPortfolio && portfolioReportData ? (
           <PortfolioReport
             portfolio={viewingPortfolio}
@@ -519,12 +559,12 @@ export default function App() {
             costReportsByCcn={costReportsByCcn}
             onToggleSave={toggleSave}
             onOpen={openFromBoard}
-            onClose={() => setViewingPortfolioId(null)}
+            onDelete={() => void handleDeletePortfolio(viewingPortfolio.id)}
             onRemoveMember={(facilityId) => handleToggleMember(viewingPortfolio.id, facilityId, false)}
           />
         ) : (
-          <DealBoard
-            saved={saved}
+          <UnfiledPage
+            unfiled={unfiledSaved}
             snfs={snfs}
             hospitals={hospitals}
             portfolios={portfolios}
@@ -549,10 +589,7 @@ export default function App() {
               await reorderSavedFacilities(ids)
               await refreshSaved()
             }}
-            onCreatePortfolio={handleCreatePortfolio}
-            onDeletePortfolio={handleDeletePortfolio}
             onToggleMember={handleToggleMember}
-            onViewReport={setViewingPortfolioId}
           />
         )
       ) : (
@@ -570,7 +607,7 @@ export default function App() {
                 }}
                 className="self-start text-sm text-slate-600 hover:text-brand dark:text-slate-300"
               >
-                ← Back to {returnTarget === 'plain' ? 'ScoutBoard' : (portfolios.find((p) => p.id === returnTarget)?.name ?? 'ScoutBoard')}
+                ← Back to {returnTarget === 'plain' ? 'Unfiled' : (portfolios.find((p) => p.id === returnTarget)?.name ?? 'Unfiled')}
               </button>
             )}
 
@@ -880,7 +917,7 @@ export default function App() {
         onClear={() => setCompareSet([])}
       />
 
-      <MobileNav view={view} savedCount={saved.length} onNavigate={navigateFromNav} />
+      <MobileNav {...navProps} />
     </div>
   )
 }

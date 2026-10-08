@@ -34,7 +34,7 @@ export function PortfolioReport({
   costReportsByCcn,
   onToggleSave,
   onOpen,
-  onClose,
+  onDelete,
   onRemoveMember
 }: {
   portfolio: Portfolio
@@ -45,7 +45,8 @@ export function PortfolioReport({
   costReportsByCcn: Map<string, FacilityYearRecord[]>
   onToggleSave: (facility: FacilityRecord, radiusOverride?: number) => void
   onOpen: (facility: FacilityRecord, radiusMiles: number) => void
-  onClose: () => void
+  /** Deleting a portfolio lives here now that the ScoutBoard overview that used to own it is gone. */
+  onDelete: () => void
   onRemoveMember: (facilityId: string) => void
 }) {
   const [tab, setTab] = useState<'list' | 'map'>('list')
@@ -170,27 +171,36 @@ export function PortfolioReport({
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
-            ← Back to ScoutBoard
-          </button>
-          <h1 className="mt-1 text-xl font-bold">{portfolio.name}</h1>
+          <h1 className="text-xl font-bold">{portfolio.name}</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {data.members.length} facilit{data.members.length === 1 ? 'y' : 'ies'}
             {data.statesCovered.length > 0 ? ` · ${data.statesCovered.join(', ')}` : ''}
           </p>
         </div>
-        <button
-          onClick={exportReport}
-          disabled={exporting}
-          className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-60"
-        >
-          {exporting ? 'Building…' : 'Download report (Excel)'}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={exportReport}
+            disabled={exporting}
+            className="rounded-lg bg-brand px-3 py-1.5 text-sm text-white hover:opacity-90 disabled:opacity-60"
+          >
+            {exporting ? 'Building…' : 'Download report (Excel)'}
+          </button>
+          <button
+            onClick={() => {
+              if (confirm(`Delete the portfolio "${portfolio.name}"? Its facilities stay saved and move to Unfiled.`)) {
+                onDelete()
+              }
+            }}
+            className="rounded-[--radius-md] border border-[--color-border-strong] px-3 py-1.5 text-sm text-[--color-text-secondary] hover:border-[--color-negative] hover:text-[--color-negative]"
+          >
+            Delete portfolio
+          </button>
+        </div>
       </div>
 
       {data.members.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
-          No facilities in this portfolio yet. Add some from ScoutBoard.
+          No facilities in this portfolio yet. Add some from Unfiled.
         </p>
       ) : (
         <>

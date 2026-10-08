@@ -21,9 +21,15 @@ describe('parseRoute', () => {
   })
 
   it('parses the named views', () => {
-    expect(parseRoute('#/board').view).toBe('board')
+    expect(parseRoute('#/unfiled').view).toBe('unfiled')
     expect(parseRoute('#/legend').view).toBe('legend')
     expect(parseRoute('#/settings').view).toBe('settings')
+  })
+
+  // The ScoutBoard overview page was removed; portfolios are reached from the navigation and the
+  // facilities in none of them have their own view. An old bookmark must still land somewhere.
+  it('falls back to search for the retired board route', () => {
+    expect(parseRoute('#/board').view).toBe('search')
   })
 
   it('parses a portfolio link', () => {
@@ -51,7 +57,7 @@ describe('parseRoute', () => {
     const routes = [
       { view: 'search' as const, facilityId: null, portfolioId: null },
       { view: 'search' as const, facilityId: 'snf:335565', portfolioId: null },
-      { view: 'board' as const, facilityId: null, portfolioId: null },
+      { view: 'unfiled' as const, facilityId: null, portfolioId: null },
       { view: 'legend' as const, facilityId: null, portfolioId: null },
       { view: 'portfolio' as const, facilityId: null, portfolioId: 'p1' }
     ]
