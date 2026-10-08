@@ -7,7 +7,7 @@ import { SpecialFocusBadge } from './SpecialFocusBadge'
 import { BookmarkIcon } from './BookmarkIcon'
 import { InfoPopover } from './InfoPopover'
 import type { LegendKey } from '../lib/legend'
-import { getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
+import { titleCaseName, getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
 import { useOwnership } from '../hooks/useOwnership'
 import { OwnershipDropdown } from './OwnershipDropdown'
 
@@ -37,7 +37,7 @@ export function AnchorCard({
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold">{facility.name}</h1>
+            <h1 className="text-lg font-bold">{titleCaseName(facility.name)}</h1>
             <TypeBadge facility={facility} />
             <SpecialFocusBadge facility={facility} long withInfo className="px-2" />
           </div>
@@ -109,7 +109,7 @@ function Metric({
 }) {
   return (
     <div>
-      <div className="flex items-center gap-1 text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+      <div className="flex items-center gap-1 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
         {label}
         {legendKey && <InfoPopover legendKey={legendKey} />}
       </div>

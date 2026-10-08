@@ -38,7 +38,7 @@ function OwnerRow({ record }: { record: OwnershipRecord }) {
     <div className="flex items-start justify-between gap-2">
       <span className="min-w-0">
         <span className="block text-slate-700 dark:text-slate-200">{record.ownerName}</span>
-        {record.role && <span className="block text-[10px] text-slate-400 dark:text-slate-500">{formatRole(record.role)}</span>}
+        {record.role && <span className="block text-[10px] text-slate-500 dark:text-slate-400">{formatRole(record.role)}</span>}
       </span>
       <span className="shrink-0 tabular-nums">{pct}</span>
     </div>
@@ -75,7 +75,7 @@ export function OwnershipDropdown({
         {tiers.map(([tier, rows]) => (
           <div key={tier} className="flex flex-col gap-1">
             {showTierLabels && (
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 {TIER_LABEL[tier]}
               </span>
             )}

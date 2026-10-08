@@ -3,7 +3,7 @@ import type { PortfolioMemberResolved, PortfolioReportData } from './portfolioRe
 import { CANNIBALIZATION_THRESHOLD_MILES, type PortfolioClusterResult, type MarketFacility } from './portfolioClusters'
 import type { Portfolio, SnfRecord, FacilityRecord } from '../types/facility'
 import type { FacilityYearRecord } from '../types/costReport'
-import { getBedsDisplay, getOccupancyDisplay, getSpecialFocus } from './facilityDisplay'
+import { getBedsDisplay, getOccupancyDisplay, getSpecialFocus, titleCaseName } from './facilityDisplay'
 import {
   EXCEL_COLORS,
   addTitle,
@@ -77,7 +77,7 @@ function detailRow(m: PortfolioMemberResolved): (string | number)[] {
   const f = m.facility
   const occ = getOccupancyDisplay(f)
   return [
-    m.row.name,
+    titleCaseName(m.row.name),
     m.row.city,
     m.row.state,
     getBedsDisplay(f),
@@ -151,7 +151,7 @@ function financialsRows(members: PortfolioMemberResolved[], costReportsByCcn: Ma
     }
     for (const rec of records) {
       rows.push([
-        m.row.name,
+        titleCaseName(m.row.name),
         formatDate(rec.fyBeginDate),
         formatDate(rec.fyEndDate),
         rec.reportStatusLabel,

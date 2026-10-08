@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { InfoPopover } from './InfoPopover'
 import type { LegendKey } from '../lib/legend'
 import type { FacilityYearRecord } from '../types/costReport'
+import { parseDateOnly } from '../lib/facilityDisplay'
 
 function formatFyLabel(fyEndDate: string): string {
-  const d = new Date(fyEndDate)
+  // parseDateOnly, not `new Date` -- a bare YYYY-MM-DD parses as UTC midnight and reads back a
+  // day early for every viewer west of UTC, turning FYE 12/31 into 12/30.
+  const d = parseDateOnly(fyEndDate)
   if (Number.isNaN(d.getTime())) return fyEndDate
   return `FYE ${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
 }
@@ -12,6 +15,18 @@ function formatFyLabel(fyEndDate: string): string {
 function fyShort(fyBeginDate: string): string {
   const year = fyBeginDate.slice(0, 4)
   return `FY${year.slice(2)}`
+}
+
+/**
+ * Names the years actually charted rather than claiming three. A facility with two filed years
+ * was previously headed "3-year trend" over two points, which overstates the evidence.
+ */
+function trendHeading(records: FacilityYearRecord[]): string {
+  if (records.length === 0) return 'Fiscal-year trend'
+  if (records.length === 1) return `${fyShort(records[0].fyBeginDate)} only`
+  const first = fyShort(records[0].fyBeginDate)
+  const last = fyShort(records[records.length - 1].fyBeginDate)
+  return `${records.length}-year trend · ${first}–${last}`
 }
 
 function isSettled(status: number): boolean {
@@ -41,21 +56,25 @@ function StatTile({
   const deltaDown = delta != null && delta < 0
   const isGood = delta != null && ((deltaGoodDirection === 'up' && deltaUp) || (deltaGoodDirection === 'down' && deltaDown))
   const isBad = delta != null && delta !== 0 && !isGood
+  const missing = value === 'N/A'
 
   return (
     <div>
-      <div className="flex items-center gap-1 text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+      <div className="flex items-center gap-1 text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
         {label}
-        <InfoPopover legendKey={legendKey} />
+        <InfoPopover legendKey={legendKey} missing={missing} />
       </div>
       <div className="flex items-baseline gap-1.5">
-        <span className={`text-lg font-bold ${valueClassName ?? ''}`}>{value}</span>
+        <span className={`text-lg font-bold ${missing ? 'text-slate-500 dark:text-slate-400' : (valueClassName ?? '')}`}>{value}</span>
         {delta != null && delta !== 0 && (
           <span
-            className={`text-xs font-semibold ${isGood ? 'text-emerald-600 dark:text-emerald-400' : isBad ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`}
+            className={`text-xs font-semibold ${isGood ? 'text-emerald-700 dark:text-emerald-400' : isBad ? 'text-red-700 dark:text-red-400' : 'text-slate-500'}`}
           >
+            {/* These metrics are themselves percentages, so a year-over-year change is a difference
+                of two percentages -- percentage points. Writing a bare "2.7" invites reading it as
+                a 2.7% relative change, which it is not. */}
             {deltaUp ? '↑' : '↓'}
-            {Math.abs(delta)}
+            {Math.abs(delta)} pp
           </span>
         )}
       </div>
@@ -196,7 +215,7 @@ function PayerMixTrend({ records }: { records: FacilityYearRecord[] }) {
                   )
                 })}
               </div>
-              <span className="text-center text-[9px] tabular-nums text-slate-400">{fyShort(r.fyBeginDate)}</span>
+              <span className="text-center text-[9px] tabular-nums text-slate-500 dark:text-slate-400">{fyShort(r.fyBeginDate)}</span>
             </div>
           )
         })}
@@ -276,8 +295,8 @@ export function CostReportCard({ records, kind }: { records: FacilityYearRecord[
 
       {trendRecords.length >= 2 && (
         <div className="mt-3">
-          <div className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-            3-year trend
+          <div className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            {trendHeading(trendRecords)}
             <InfoPopover legendKey="cost-report-trend" />
           </div>
           <div className={`grid gap-2.5 ${kind === 'snf' ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -287,7 +306,7 @@ export function CostReportCard({ records, kind }: { records: FacilityYearRecord[
                 <span className="text-xs font-bold">{latest.occupancyPct}%</span>
               </div>
               <TrendLine points={trendRecords.map((r) => ({ label: fyShort(r.fyBeginDate), value: r.occupancyPct! }))} color="#0d8fae" />
-              <div className="flex justify-between text-[9px] tabular-nums text-slate-400">
+              <div className="flex justify-between text-[9px] tabular-nums text-slate-500 dark:text-slate-400">
                 {trendRecords.map((r) => (
                   <span key={r.fyBeginDate}>{fyShort(r.fyBeginDate)}</span>
                 ))}
@@ -306,7 +325,7 @@ export function CostReportCard({ records, kind }: { records: FacilityYearRecord[
                   points={trendRecords.filter((r) => r.operatingMarginPct != null).map((r) => ({ label: fyShort(r.fyBeginDate), value: r.operatingMarginPct! }))}
                   color="#0f4c5c"
                 />
-                <div className="flex justify-between text-[9px] tabular-nums text-slate-400">
+                <div className="flex justify-between text-[9px] tabular-nums text-slate-500 dark:text-slate-400">
                   {trendRecords
                     .filter((r) => r.operatingMarginPct != null)
                     .map((r) => (

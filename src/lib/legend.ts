@@ -24,6 +24,12 @@ export interface LegendEntry {
   source: string
   refresh: string
   details: string | null
+  /**
+   * Shown in place of `details` when the value on screen is N/A. "From Worksheet G/G-2/G-3" tells
+   * a reader where a number would have come from but nothing about why it is absent, which is the
+   * only question worth answering at the moment they are looking at a blank.
+   */
+  whenMissing?: string
 }
 
 export interface LegendGroup {
@@ -114,21 +120,28 @@ const ENTRIES: LegendEntry[] = [
     stat: 'Occupancy (cost-report basis)',
     source: 'CMS HCRIS cost reports',
     refresh: 'Quarterly (Jan/Apr/Jul/Oct)',
-    details: 'Fiscal-year average, not a live snapshot'
+    details:
+      'Total patient days ÷ (beds × days in the fiscal year). A fiscal-year average, so it will differ from the Care Compare occupancy above, which is a recent daily census.',
+    whenMissing:
+      'This facility\u2019s filed cost report has no usable patient-day or bed count, so the ratio cannot be computed. It is missing from the filing, not zero.'
   },
   {
     key: 'cost-report-margin',
     stat: 'Operating margin',
     source: 'CMS HCRIS cost reports',
     refresh: 'Quarterly',
-    details: 'From Worksheet G/G-2/G-3'
+    details:
+      '(Net patient revenue − total operating expenses) ÷ net patient revenue, from Worksheet G/G-2/G-3. Negative means the facility spent more on operations than it collected.',
+    whenMissing:
+      'Shown as N/A because this facility\u2019s filing is missing the revenue figures the ratio needs — commonly the case for reports filed as a group or with an incomplete Worksheet G. Expenses alone cannot produce a margin, so nothing is estimated.'
   },
   {
     key: 'cost-report-payer-mix',
     stat: 'Payer mix (Medicare/Medicaid/other)',
     source: 'CMS HCRIS cost reports',
     refresh: 'Quarterly',
-    details: 'Share of patient days, Worksheet S-3 Pt I'
+    details: 'Share of total patient days by payer, from Worksheet S-3 Pt I — days, not dollars',
+    whenMissing: 'This filing does not break patient days out by payer, so the split cannot be derived.'
   },
   {
     key: 'cost-report-status',
@@ -139,10 +152,11 @@ const ENTRIES: LegendEntry[] = [
   },
   {
     key: 'cost-report-trend',
-    stat: '3-year trend',
+    stat: 'Fiscal-year trend',
     source: 'Derived in-app',
     refresh: 'Derived',
-    details: 'Built from the cost-report stats above once 2+ fiscal years are on file'
+    details:
+      'Built from the cost-report stats above, one point per fiscal year on file. The heading names the actual years charted, which may be fewer than three.'
   },
   {
     key: 'distance',

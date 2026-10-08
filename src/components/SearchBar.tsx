@@ -3,6 +3,7 @@ import type { FacilityRecord, SnfRecord, HospitalRecord, FacilityKind } from '..
 import { searchFacilities, passesFilters, type SpecialFocusFilter } from '../lib/search'
 import { useOwnerNameSearch } from '../hooks/useOwnerNameSearch'
 import { formatRole } from '../lib/ownershipDisplay'
+import { titleCaseName } from '../lib/facilityDisplay'
 
 interface OwnerMatch {
   facility: SnfRecord
@@ -66,9 +67,16 @@ export function SearchBar({
     return [...byFacility.values()]
   }, [ownerHitsRaw, snfByCcn, filters])
 
+  // Whether the person has actually asked for something. Used to tell "nothing typed yet" apart
+  // from "typed something that matched nothing" -- previously both rendered as no dropdown at
+  // all, so a nonsense query looked identical to an untouched search box.
+  const hasSearchIntent = query.trim().length >= 2 || activeFilterCount > 0
+  const ownerPending = ownerSearchEnabled && ownerQuery.trim().length >= 3 && (ownerLoading || !!ownerError)
+  const noResults = hasSearchIntent && hits.length === 0 && ownerMatches.length === 0 && !ownerPending
+
   const showResults =
     (focused || filtersOpen) &&
-    (hits.length > 0 || ownerMatches.length > 0 || ownerLoading || (ownerSearchEnabled && ownerQuery.trim().length >= 3 && ownerError))
+    (hits.length > 0 || ownerMatches.length > 0 || ownerLoading || noResults || (ownerSearchEnabled && ownerQuery.trim().length >= 3 && ownerError))
 
   function clearFilters() {
     setStateFilter('')
@@ -190,7 +198,7 @@ export function SearchBar({
               disabled={kindFilter === 'hospital'}
               onChange={(e) => setOwnerQuery(e.target.value)}
               placeholder="e.g. Einhorn, or 150 Riverside Management…"
-              className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
             />
           </label>
 
@@ -205,7 +213,7 @@ export function SearchBar({
                 value={specialFocus}
                 disabled={kindFilter === 'hospital'}
                 onChange={(e) => setSpecialFocus(e.target.value as SpecialFocusFilter | '')}
-                className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
+                className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900"
               >
                 <option value="">Any</option>
                 <option value="sff">Special Focus Facility</option>
@@ -224,13 +232,36 @@ export function SearchBar({
 
       {showResults && (
         <ul className="absolute z-20 mt-1 max-h-96 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+          {noResults && (
+            <li className="px-4 py-5 text-center">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">No results</p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {query.trim().length >= 2 ? (
+                  <>
+                    Nothing matches “{query.trim()}”
+                    {activeFilterCount > 0 ? ' with the current filters' : ''}. Search matches facility name, city, or ZIP.
+                  </>
+                ) : (
+                  <>No facilities match the current filters.</>
+                )}
+              </p>
+              {activeFilterCount > 0 && (
+                <button
+                  onMouseDown={clearFilters}
+                  className="mt-2 text-xs font-medium text-brand underline-offset-2 hover:underline dark:text-sky-300"
+                >
+                  Clear {activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'}
+                </button>
+              )}
+            </li>
+          )}
           {hits.map(({ facility }) => (
             <li key={`${facility.kind}:${facility.ccn}`}>
               <button
                 className="flex w-full flex-col items-start px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
                 onMouseDown={() => select(facility)}
               >
-                <span className="font-medium">{facility.name}</span>
+                <span className="font-medium">{titleCaseName(facility.name)}</span>
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   {facility.city}, {facility.state} · CCN {facility.ccn} · {facility.kind === 'snf' ? 'SNF' : 'Hospital'}
                 </span>
@@ -248,7 +279,7 @@ export function SearchBar({
 
           {ownerSearchEnabled && ownerQuery.trim().length >= 3 && (
             <>
-              <li className="border-t border-slate-200 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:text-slate-500">
+              <li className="border-t border-slate-200 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-700 dark:text-slate-400">
                 Owners matching “{ownerQuery.trim()}”
               </li>
               {ownerLoading && <li className="px-4 py-2 text-xs text-slate-500 dark:text-slate-400">Searching…</li>}
@@ -264,13 +295,13 @@ export function SearchBar({
                     className="flex w-full flex-col items-start px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800"
                     onMouseDown={() => select(facility)}
                   >
-                    <span className="font-medium">{facility.name}</span>
+                    <span className="font-medium">{titleCaseName(facility.name)}</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       {facility.city}, {facility.state} · CCN {facility.ccn}
                     </span>
                     <span className="text-xs text-brand">
                       {ownerName}
-                      {role && <span className="text-slate-400 dark:text-slate-500"> — {formatRole(role)}</span>}
+                      {role && <span className="text-slate-500 dark:text-slate-400"> — {formatRole(role)}</span>}
                     </span>
                   </button>
                 </li>

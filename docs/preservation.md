@@ -12,8 +12,16 @@ the correction is permanent, rather than working around it.
 
 ## Navigation
 
-Two views, both reachable from the bottom nav: **ScoutBoard** (with a saved-count badge when
-non-zero) and **Search**.
+Four destinations, reachable from persistent navigation at every width: **Search**, **ScoutBoard**
+(with a saved-count badge when non-zero), **Sources** and **Settings**. A sidebar rail at >=1024px,
+a thumb-reachable bottom bar below it; both render the same destination list, so a view can never
+be reachable from one and stranded in the other.
+
+The URL hash is the source of truth for the current view and facility, so browser Back/Forward
+restore state and a facility can be linked to. GitHub Pages cannot rewrite unknown paths, so links
+are hash-shaped (`#/facility/snf/335565`) rather than real paths. A shared link carries only a
+facility kind and CCN — both public CMS identifiers — and never a name, email, device id, note or
+portfolio.
 
 ## Facility search
 
@@ -121,11 +129,25 @@ All of these must remain present:
   storage, and force everyone back through the gate.
 - A 7-day offline grace period applies when the endpoint is unreachable.
 
+## Accessibility
+
+- Star ratings expose their numeric value to assistive technology. The five glyphs are
+  `aria-hidden` and the value is announced once as text — rendering five ★ characters with the
+  meaning carried only by fill colour reported the same rating for every facility.
+- Every interactive element has a visible focus ring, and touch targets are at least 44px.
+- `prefers-reduced-motion` is respected.
+
 ## Platform behavior
 
-- Installable PWA, works offline via the service worker.
-- Theme follows the OS preference. `tailwind.config.js` intentionally has **no** `darkMode` key
-  (Tailwind's `media` strategy). No manual theme toggle.
+- Installable PWA. The app shell and the self-published roster/cost-report JSON are cached, so a
+  previously loaded browser works offline against dated cached data. **OpenStreetMap tiles are
+  deliberately not cached** — their usage policy forbids pre-caching — so offline means cached
+  data, not an offline map.
+- Theme defaults to the OS preference, and Settings offers an explicit light / dark / Match system
+  choice. **Reversed deliberately** — this entry previously read "no manual theme toggle", which
+  the UI redesign brief overrode. An explicit choice stamps `data-theme` on `<html>`; 'system'
+  writes nothing and lets the media query govern. The stored preference survives a `GATE_VERSION`
+  flush, since a display setting is not identity.
 - Mobile-first layout; bottom nav respects `env(safe-area-inset-bottom)`.
 - Brand tokens: `brand` #0f4c5c, `gold` #e9c46a, `snf` #0ea5e9, `hospital` #ef4444.
 - Link-preview cards (WhatsApp etc.) must render without white corners.

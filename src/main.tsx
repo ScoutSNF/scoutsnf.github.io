@@ -4,6 +4,9 @@ import 'leaflet/dist/leaflet.css'
 import './index.css'
 import App from './App'
 import AccessGate from './AccessGate'
+import { initTheme } from './lib/theme'
+
+initTheme()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

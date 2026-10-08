@@ -95,8 +95,10 @@ async function flushIfStaleVersion(): Promise<boolean> {
   if (localStorage.getItem(GATE_VERSION_KEY) === GATE_VERSION) return false
 
   try {
+    // Identity and caches go; display preferences are not identity and survive a re-signin.
+    const PRESERVED = new Set(['scoutsnf.theme'])
     for (const key of Object.keys(localStorage)) {
-      if (key.startsWith('scoutsnf.')) localStorage.removeItem(key)
+      if (key.startsWith('scoutsnf.') && !PRESERVED.has(key)) localStorage.removeItem(key)
     }
 
     const cacheKeys = await caches.keys()
@@ -196,8 +198,12 @@ export default function AccessGate({ children }: { children: ReactNode }) {
 
         {screen === 'form' && (
           <form className="flex flex-col" onSubmit={handleSubmit} noValidate>
-            <h1 className="mb-3 text-base font-semibold text-slate-900 dark:text-slate-100">Sign in to continue</h1>
-            <label className="text-xs text-slate-500 dark:text-slate-400" htmlFor="sg-name">
+            <h1 className="mb-1.5 text-base font-semibold text-slate-900 dark:text-slate-100">Sign in to continue</h1>
+            <p className="mb-3 text-sm leading-snug text-slate-600 dark:text-slate-300">
+              ScoutSNF maps the competitive market around any US skilled nursing facility — CMS ratings, occupancy,
+              cost-report financials, and the other SNFs and hospitals within a chosen radius.
+            </p>
+            <label className="text-xs text-slate-600 dark:text-slate-300" htmlFor="sg-name">
               Full name
             </label>
             <input
@@ -208,7 +214,7 @@ export default function AccessGate({ children }: { children: ReactNode }) {
               onChange={(e) => setName(e.target.value)}
               className="mt-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-brand focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
-            <label className="mt-3 text-xs text-slate-500 dark:text-slate-400" htmlFor="sg-email">
+            <label className="mt-3 text-xs text-slate-600 dark:text-slate-300" htmlFor="sg-email">
               Email
             </label>
             <input
@@ -227,6 +233,9 @@ export default function AccessGate({ children }: { children: ReactNode }) {
             >
               {submitting ? 'Signing in…' : 'Continue'}
             </button>
+            <p className="mt-3 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+              Your name and email are recorded to manage who has access. Nothing else is collected.
+            </p>
           </form>
         )}
 

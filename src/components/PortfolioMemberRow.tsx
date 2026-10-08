@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { PortfolioMemberResolved } from '../lib/portfolioReport'
 import { StarRating } from './StarRating'
 import { TypeBadge } from './TypeBadge'
-import { getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
+import { titleCaseName, getBedsDisplay, getOccupancyDisplay } from '../lib/facilityDisplay'
 
 export function PortfolioMemberRow({
   member,
@@ -24,7 +24,7 @@ export function PortfolioMemberRow({
         disabled={!onClick}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium">{member.row.name}</span>
+          <span className="font-medium">{titleCaseName(member.row.name)}</span>
           <TypeBadge facility={member.facility} />
           {badge}
         </div>

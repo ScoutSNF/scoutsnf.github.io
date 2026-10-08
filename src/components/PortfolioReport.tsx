@@ -14,6 +14,7 @@ import { StandaloneRow } from './StandaloneRow'
 import { PortfolioAnchorDrillDown } from './PortfolioAnchorDrillDown'
 import { PortfolioMemberRow } from './PortfolioMemberRow'
 import { CompareCard } from './CompareCard'
+import { titleCaseName } from '../lib/facilityDisplay'
 
 const CLUSTER_THRESHOLD_KEY = 'scoutsnf:portfolioClusterThreshold'
 const COMPETITOR_RADIUS_KEY = 'scoutsnf:portfolioCompetitorRadius'
@@ -216,7 +217,7 @@ export function PortfolioReport({
                         active ? 'border-brand bg-brand/10 text-brand' : 'border-slate-300 text-slate-500 dark:border-slate-700 dark:text-slate-400'
                       }`}
                     >
-                      {m.row.name}
+                      {titleCaseName(m.row.name)}
                     </button>
                   )
                 })}
@@ -293,7 +294,7 @@ export function PortfolioReport({
                             className={`rounded-full border px-2.5 py-1 text-xs ${
                               active
                                 ? 'border-brand bg-brand/10 text-brand'
-                                : 'border-slate-300 text-slate-400 dark:border-slate-700'
+                                : 'border-slate-300 text-slate-500 dark:text-slate-400 dark:border-slate-700'
                             }`}
                           >
                             {t}
@@ -304,7 +305,7 @@ export function PortfolioReport({
                   )}
 
                   <ResultsSection
-                    title={`Within ${effectiveRadius} mi of ${selectedMember.row.name}`}
+                    title={`Within ${effectiveRadius} mi of ${titleCaseName(selectedMember.row.name)}`}
                     items={combinedResults}
                     savedIds={savedIds}
                     onToggleSave={(facility) => onToggleSave(facility, effectiveRadius)}
@@ -335,7 +336,7 @@ export function PortfolioReport({
                       trailing={
                         <button
                           onClick={() => onRemoveMember(portfolioMemberId(m))}
-                          className="text-slate-400 hover:text-red-500"
+                          className="text-slate-500 dark:text-slate-400 hover:text-red-500"
                           title="Remove from portfolio (returns it to ScoutBoard)"
                         >
                           ✕

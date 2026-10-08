@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react'
 import { getLegendEntry, type LegendKey } from '../lib/legend'
 
-export function InfoPopover({ legendKey, className }: { legendKey: LegendKey; className?: string }) {
+export function InfoPopover({
+  legendKey,
+  className,
+  missing = false
+}: {
+  legendKey: LegendKey
+  className?: string
+  /** Set when the value this explains is currently N/A, so the panel answers "why is this blank?"
+   *  instead of only describing where the number would have come from. */
+  missing?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const entry = getLegendEntry(legendKey)
 
@@ -26,7 +36,7 @@ export function InfoPopover({ legendKey, className }: { legendKey: LegendKey; cl
         }}
         aria-label={`Source & details for ${entry.stat}`}
         title="Source & details"
-        className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-slate-300 text-[9px] font-semibold leading-none text-slate-400 hover:border-slate-400 hover:text-slate-600 dark:border-slate-600 dark:text-slate-500 dark:hover:text-slate-300 ${className ?? ''}`}
+        className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-slate-300 text-[9px] font-semibold leading-none text-slate-500 hover:border-slate-400 hover:text-slate-600 dark:border-slate-600 dark:text-slate-400 dark:hover:text-slate-200 ${className ?? ''}`}
       >
         i
       </button>
@@ -50,24 +60,34 @@ export function InfoPopover({ legendKey, className }: { legendKey: LegendKey; cl
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close"
-                className="shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                className="shrink-0 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               >
                 ✕
               </button>
             </div>
             <dl className="mt-2.5 space-y-2 text-sm">
               <div>
-                <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Source</dt>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Source</dt>
                 <dd className="text-slate-700 dark:text-slate-300">{entry.source}</dd>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Refresh</dt>
+                <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Refresh</dt>
                 <dd className="text-slate-700 dark:text-slate-300">{entry.refresh}</dd>
               </div>
               {entry.details && (
                 <div>
-                  <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Details</dt>
+                  <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {missing && entry.whenMissing ? 'How it is computed' : 'Details'}
+                  </dt>
                   <dd className="text-slate-700 dark:text-slate-300">{entry.details}</dd>
+                </div>
+              )}
+              {missing && entry.whenMissing && (
+                <div>
+                  <dt className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                    Why it shows N/A
+                  </dt>
+                  <dd className="text-slate-700 dark:text-slate-300">{entry.whenMissing}</dd>
                 </div>
               )}
             </dl>

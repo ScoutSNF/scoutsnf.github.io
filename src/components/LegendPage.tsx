@@ -26,7 +26,7 @@ export function LegendPage({ onBack }: { onBack: () => void }) {
                       <span>{entry.refresh}</span>
                     </div>
                     {entry.details && (
-                      <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{entry.details}</div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{entry.details}</div>
                     )}
                   </div>
                 )

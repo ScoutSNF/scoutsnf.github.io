@@ -7,6 +7,7 @@ import { PortfolioMemberRow } from './PortfolioMemberRow'
 import { MarketFacilityRow } from './MarketFacilityRow'
 import { CappedList } from './CappedList'
 import { CompareCard } from './CompareCard'
+import { titleCaseName } from '../lib/facilityDisplay'
 
 const FAR_DISTANCE_MILES = 50
 
@@ -117,7 +118,7 @@ export function PortfolioAnchorDrillDown({
       <section className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <h3 className="mb-2 text-sm font-semibold">Portfolio distances</h3>
         {near.length === 0 && far.length === 0 ? (
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {members.length <= 1 ? 'No other facilities in this portfolio.' : 'No other portfolio facilities have location data.'}
           </p>
         ) : (
@@ -128,7 +129,7 @@ export function PortfolioAnchorDrillDown({
                   className="min-w-0 flex-1 text-left"
                   onClick={() => onSelectFacility(row.member)}
                 >
-                  <span className="font-medium">{row.member.row.name}</span>
+                  <span className="font-medium">{titleCaseName(row.member.row.name)}</span>
                   {row.sameCluster && (
                     <span className="ml-2 rounded-full bg-brand/10 px-1.5 py-0.5 text-[10px] text-brand">
                       {clusterByMemberId.get(portfolioMemberId(row.member))?.name}
