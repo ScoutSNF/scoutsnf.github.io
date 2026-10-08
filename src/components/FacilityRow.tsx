@@ -139,7 +139,7 @@ export function FacilityRow({
 
       {/* Desktop: the dense sortable table, which works well once there is room for it. */}
       <button
-        className="hidden w-full grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] items-center gap-3 px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-900 sm:grid"
+        className="hidden w-full grid-cols-[1.75rem_minmax(0,1fr)_3.75rem_3rem_4.5rem_5.5rem_1.5rem] items-start gap-3 px-3 py-2.5 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-900 sm:grid"
         onClick={toggle}
       >
         <span className="h-7 w-7 shrink-0 overflow-hidden rounded-md">
@@ -150,10 +150,8 @@ export function FacilityRow({
           )}
         </span>
         <span className="flex min-w-0 flex-col">
-          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-            <span className="min-w-0 flex-1 truncate font-medium" title={displayName}>
-              {displayName}
-            </span>
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span className="min-w-0 font-medium leading-snug">{displayName}</span>
             <span className="shrink-0">
               <TypeBadge facility={facility} />
             </span>

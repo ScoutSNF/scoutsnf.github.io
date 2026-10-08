@@ -68,13 +68,19 @@ export function AnchorCard({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-4">
         <Metric label="Certified beds" legendKey={facility.kind === 'snf' ? 'snf-beds' : 'hospital-beds'} value={getBedsDisplay(facility)} />
         <Metric
           label="Occupancy"
           legendKey={facility.kind === 'snf' ? 'snf-occupancy' : latestCostReport ? 'cost-report-occupancy' : undefined}
-          value={hospitalOccupancyText}
-          sub={facility.kind === 'snf' ? occupancy.asOfLabel : null}
+          value={facility.kind === 'hospital' && !latestCostReport ? 'Not reported' : hospitalOccupancyText}
+          sub={
+            facility.kind === 'snf'
+              ? occupancy.asOfLabel
+              : latestCostReport
+                ? null
+                : 'CMS publishes no occupancy for hospitals without a filed cost report'
+          }
         />
         <Metric label="Overall rating" legendKey={facility.kind === 'snf' ? 'snf-overall-rating' : 'hospital-overall-rating'} value={<StarRating rating={facility.overallRating} />} />
         {facility.kind === 'snf' ? (

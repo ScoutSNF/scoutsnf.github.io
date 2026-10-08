@@ -89,7 +89,7 @@ export function ResultsSection({
     <button
       onClick={() => handleSort(key)}
       title={title}
-      className={`truncate whitespace-nowrap text-left text-[10px] font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50 sm:text-xs ${extraClass}`}
+      className={`whitespace-nowrap text-left text-[10px] font-semibold uppercase tracking-wide text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50 sm:text-xs ${extraClass}`}
     >
       {label}
       {sortKey === key ? (asc ? ' ▲' : ' ▼') : ''}
@@ -143,10 +143,10 @@ export function ResultsSection({
             </button>
           </div>
 
-          <div className="hidden grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] items-center gap-3 border-b border-slate-100 px-3 py-1.5 dark:border-slate-800 sm:grid">
+          <div className="hidden grid-cols-[1.75rem_minmax(0,1fr)_3.75rem_3rem_4.5rem_5.5rem_1.5rem] items-center gap-3 border-b border-slate-100 px-3 py-1.5 dark:border-slate-800 sm:grid">
             <span />
             {sortBtn('name', 'Name')}
-            {sortBtn('distance', 'Dist.', 'text-right', 'Straight-line distance, not drive time')}
+            {sortBtn('distance', 'Dist', 'text-right', 'Straight-line distance, not drive time')}
             {sortBtn('beds', 'Beds', 'text-right')}
             {hasAnyOccupancy ? sortBtn('occupancy', 'Occ.', 'text-right') : <span />}
             {sortBtn('rating', 'Rating', 'text-right')}
