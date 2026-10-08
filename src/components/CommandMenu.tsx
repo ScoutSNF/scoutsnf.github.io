@@ -50,7 +50,7 @@ export function CommandMenu({
   const navActions: CommandAction[] = useMemo(
     () => [
       { id: 'go-search', label: 'Go to Search', hint: 'Navigation', run: () => onNavigate('search') },
-      { id: 'go-board', label: 'Go to ScoutBoard', hint: 'Navigation', run: () => onNavigate('board') },
+      { id: 'go-unfiled', label: 'Go to Unfiled', hint: 'Navigation', run: () => onNavigate('unfiled') },
       { id: 'go-legend', label: 'Go to Sources & definitions', hint: 'Navigation', run: () => onNavigate('legend') },
       { id: 'go-settings', label: 'Go to Settings', hint: 'Navigation', run: () => onNavigate('settings') }
     ],

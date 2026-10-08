@@ -11,7 +11,13 @@
  * local to a browser and never serialised into a URL.
  */
 
-export type AppView = 'search' | 'board' | 'portfolio' | 'legend' | 'settings'
+/**
+ * `board` (the old ScoutBoard overview) is deliberately absent: portfolios are now reached from
+ * the navigation itself, and the saved facilities that are in no portfolio have their own
+ * `unfiled` view. An old `#/board` bookmark falls through to Search rather than 404ing, because
+ * `parseRoute` only accepts names in VIEWS.
+ */
+export type AppView = 'search' | 'portfolio' | 'unfiled' | 'legend' | 'settings'
 
 export interface AppRoute {
   view: AppView
@@ -23,7 +29,7 @@ export interface AppRoute {
 
 export const DEFAULT_ROUTE: AppRoute = { view: 'search', facilityId: null, portfolioId: null }
 
-const VIEWS: AppView[] = ['search', 'board', 'portfolio', 'legend', 'settings']
+const VIEWS: AppView[] = ['search', 'portfolio', 'unfiled', 'legend', 'settings']
 
 /** CCNs are 6 alphanumeric characters in CMS data; anything else is not a facility id we issued. */
 const FACILITY_ID = /^(snf|hospital):([A-Za-z0-9]{1,10})$/

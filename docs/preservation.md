@@ -12,10 +12,28 @@ the correction is permanent, rather than working around it.
 
 ## Navigation
 
-Four destinations, reachable from persistent navigation at every width: **Search**, **ScoutBoard**
-(with a saved-count badge when non-zero), **Sources** and **Settings**. A sidebar rail at >=1024px,
-a thumb-reachable bottom bar below it; both render the same destination list, so a view can never
-be reachable from one and stranded in the other.
+Persistent navigation at every width: a sidebar rail at >=1024px, a thumb-reachable bottom bar
+below it. Both expose the same destinations, so a view can never be reachable from one and
+stranded in the other.
+
+**Search** sits at the top with **ScoutBoard**; **Sources** and **Settings** are pinned to the
+bottom of the rail, below a divider and in quieter, smaller styling, as admin options.
+
+**ScoutBoard is a disclosure, not a destination.** It has no page of its own and tapping it never
+navigates — it expands the portfolio list beneath it, indented, each row showing a name and
+facility count, plus a "+ New portfolio" action. It reads as selected while open with nothing
+picked under it; picking a portfolio moves the selection to that row and opens the portfolio's
+landing page. Tapping it again collapses the list. Only one navigation item is ever highlighted.
+
+**ScoutBoard previously had an overview page at `#/board`. It was deleted deliberately** — its
+route falls through to Search so old links still land somewhere. Everything it owned survives, on
+other pages; see "ScoutBoard (saved facilities)" below for where.
+
+An **Unfiled** row appears at the bottom of the list, with a count, when any saved facility is in
+no portfolio, and is hidden when there are none. It opens `#/unfiled`.
+
+On a phone the bar stays a bar: ScoutBoard raises a drawer that sits directly above it, so Search
+is never pushed off screen, and every drawer row is a 44px target.
 
 The URL hash is the source of truth for the current view and facility, so browser Back/Forward
 restore state and a facility can be linked to. GitHub Pages cannot rewrite unknown paths, so links
@@ -107,14 +125,25 @@ All of these must remain present:
 ## ScoutBoard (saved facilities)
 
 - Save/unsave any facility; saved count shows in the nav.
-- Per-facility free-text notes, persisted.
-- Manual reordering, persisted.
+- Per-facility free-text notes, persisted. **On the Unfiled page.**
+- Manual reordering, persisted. **On the Unfiled page.**
 - Each saved facility remembers the radius it was saved at.
+
+These three lived on the ScoutBoard overview page until it was deleted, and moved rather than
+going away with it. The Unfiled page is the only place that offers any of them, so a change that
+removes or replaces that page has to carry them somewhere else first.
 
 ## Portfolios
 
-- Multiple named portfolios: create, rename, delete, reorder.
-- Add/remove facilities to any portfolio.
+- Multiple named portfolios: create, delete.
+  - **Create** is the "+ New portfolio" action at the bottom of the navigation's portfolio list.
+  - **Delete** is on the portfolio's own landing page, behind a confirm. Its facilities stay saved
+    and fall back to Unfiled.
+  - **Rename and reorder are not implemented.** This entry claimed both for a long time;
+    `renamePortfolio` exists in `src/data/portfolios.ts` but nothing has ever called it, and there
+    has never been a reorder. Corrected rather than treated as a regression to chase.
+- Add a facility to a portfolio: **on the Unfiled page**, the only place that offers it.
+  Remove a facility from one: on that portfolio's landing page.
 - Portfolio map view, cluster analysis, anchor drill-down, and overlap/shared-market reporting.
 
 ## Exports
