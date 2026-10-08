@@ -123,6 +123,32 @@ describe('searchFacilities', () => {
     expect(hits.map((h) => h.facility.ccn)).toEqual(['OLD1'])
   })
 
+  // 'unrated' is a distinct population, not the bottom of the scale. A facility CMS has not rated
+  // must never be swept into a "1+ stars" result, nor hidden when someone asks for unrated ones.
+  it('filters by minimum CMS stars without swallowing unrated facilities', () => {
+    const five = snf({ ccn: 'F5', overallRating: 5 })
+    const three = snf({ ccn: 'F3', overallRating: 3 })
+    const one = snf({ ccn: 'F1', overallRating: 1 })
+    const unrated = snf({ ccn: 'FU', overallRating: null })
+    const roster = [five, three, one, unrated]
+
+    expect(searchFacilities('', roster, [], { minStars: 4 }).hits.map((h) => h.facility.ccn)).toEqual(['F5'])
+    expect(searchFacilities('', roster, [], { minStars: 1 }).hits.map((h) => h.facility.ccn).sort()).toEqual(['F1', 'F3', 'F5'])
+    expect(searchFacilities('', roster, [], { minStars: 'unrated' }).hits.map((h) => h.facility.ccn)).toEqual(['FU'])
+  })
+
+  it('applies a star filter to hospitals as well as SNFs', () => {
+    const goodHospital = hospital({ ccn: 'H5', overallRating: 5 })
+    const poorHospital = hospital({ ccn: 'H2', overallRating: 2 })
+    expect(
+      searchFacilities('', [], [goodHospital, poorHospital], { minStars: 4 }).hits.map((h) => h.facility.ccn)
+    ).toEqual(['H5'])
+  })
+
+  it('treats a bare star filter as a valid search on its own', () => {
+    expect(searchFacilities('', [snf({ ccn: 'A', overallRating: 5 })], [], { minStars: 5 }).total).toBe(1)
+  })
+
   it('combines a text query with structured filters as AND', () => {
     const match = snf({ ccn: 'M1', name: 'Match Name', state: 'IL', certifiedBeds: 150 })
     const wrongState = snf({ ccn: 'M2', name: 'Match Name', state: 'NY', certifiedBeds: 150 })

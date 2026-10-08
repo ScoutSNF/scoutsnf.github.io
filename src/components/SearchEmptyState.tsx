@@ -1,11 +1,56 @@
+import type { RecentFacility } from '../lib/recentFacilities'
+import { titleCaseName } from '../lib/facilityDisplay'
+
 /**
  * Shown on Search before anything is selected. Previously this area was simply blank, which gave
  * a first-time visitor no idea what the app does or where to start. An empty state explaining an
  * otherwise-blank screen is the one place prose is warranted (see CLAUDE.md).
  */
-export function SearchEmptyState({ onTryExample }: { onTryExample?: () => void }) {
+export function SearchEmptyState({
+  onTryExample,
+  recents = [],
+  onOpenRecent,
+  onClearRecents
+}: {
+  onTryExample?: () => void
+  recents?: RecentFacility[]
+  onOpenRecent?: (r: RecentFacility) => void
+  onClearRecents?: () => void
+}) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-300 bg-white/50 p-6 dark:border-slate-700 dark:bg-slate-900/40">
+    <div className="flex flex-col gap-4">
+      {recents.length > 0 && (
+        <section className="rounded-[--radius-lg] border border-[--color-border] bg-[--color-surface] p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-[--color-text]">Recently viewed</h2>
+            {onClearRecents && (
+              <button
+                onClick={onClearRecents}
+                className="min-h-[1.75rem] text-xs font-medium text-[--color-text-secondary] underline-offset-2 hover:underline"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <ul className="flex flex-col divide-y divide-[--color-border]">
+            {recents.map((r) => (
+              <li key={r.id}>
+                <button
+                  onClick={() => onOpenRecent?.(r)}
+                  className="flex w-full min-h-[2.75rem] flex-col items-start py-2 text-left hover:bg-[--color-surface-hover]"
+                >
+                  <span className="text-sm font-medium text-[--color-text]">{titleCaseName(r.name)}</span>
+                  <span className="text-xs text-[--color-text-secondary]">
+                    {r.city}, {r.state} · CCN {r.ccn} · {r.kind === 'snf' ? 'SNF' : 'Hospital'}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+    <div className="rounded-[--radius-lg] border border-dashed border-[--color-border-strong] bg-[--color-surface] p-6">
       <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Scout a facility's local market</h2>
       <p className="mt-1.5 text-sm leading-snug text-slate-600 dark:text-slate-300">
         Search any US skilled nursing facility to see its CMS ratings, occupancy and cost-report financials — plus every
@@ -39,6 +84,7 @@ export function SearchEmptyState({ onTryExample }: { onTryExample?: () => void }
           Try an example facility
         </button>
       )}
+    </div>
     </div>
   )
 }

@@ -10,6 +10,7 @@ import type { LegendKey } from '../lib/legend'
 import { titleCaseName, getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
 import { useOwnership } from '../hooks/useOwnership'
 import { OwnershipDropdown } from './OwnershipDropdown'
+import { CopyLinkButton } from './CopyLinkButton'
 
 export function AnchorCard({
   facility,
@@ -33,27 +34,38 @@ export function AnchorCard({
   const { records: ownership, loading: ownershipLoading, error: ownershipError } = useOwnership(facility.ccn, facility.kind === 'snf')
 
   return (
-    <div className="rounded-xl border-2 border-brand/40 bg-white p-4 shadow-sm dark:bg-slate-900">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold">{titleCaseName(facility.name)}</h1>
-            <TypeBadge facility={facility} />
-            <SpecialFocusBadge facility={facility} long withInfo className="px-2" />
+    <div className="rounded-[--radius-lg] border border-[--color-border] bg-[--color-surface] p-4 shadow-[--shadow-sm]">
+      {/* Identity first, actions below it rather than crowded alongside -- at 390px a row of
+          icon buttons beside a wrapping facility name squeezed the name to a few characters. */}
+      <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-bold leading-tight text-[--color-text]">{titleCaseName(facility.name)}</h1>
+              <TypeBadge facility={facility} />
+              <SpecialFocusBadge facility={facility} long withInfo className="px-2" />
+            </div>
+            <p className="mt-0.5 text-sm text-[--color-text-secondary]">
+              {facility.address}, {facility.city}, {facility.state} {facility.zip}
+            </p>
+            <p className="text-sm text-[--color-text-muted]">
+              {facility.kind === 'snf' ? 'Skilled nursing facility' : facility.hospitalType} · CCN{' '}
+              <span className="tabular-nums">{facility.ccn}</span>
+            </p>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {facility.address}, {facility.city}, {facility.state} {facility.zip} · CCN {facility.ccn}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {actions}
           <button
             onClick={onToggleSave}
-            className={`text-2xl ${saved ? 'text-gold' : 'text-slate-300 hover:text-gold'}`}
+            aria-pressed={saved}
+            className={`shrink-0 rounded-[--radius-md] p-2 text-2xl ${saved ? 'text-gold' : 'text-[--color-text-muted] hover:text-gold'}`}
             title={saved ? 'Remove from ScoutBoard' : 'Save to ScoutBoard'}
           >
             <BookmarkIcon filled={saved} />
           </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <CopyLinkButton facility={facility} />
+          {actions}
         </div>
       </div>
 

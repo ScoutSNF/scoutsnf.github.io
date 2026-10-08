@@ -4,6 +4,15 @@ import { getSpecialFocus } from './facilityDisplay'
 /** 'sff' = in the program only; 'candidate' = watch list only; 'any' = either. */
 export type SpecialFocusFilter = 'sff' | 'candidate' | 'any'
 
+/**
+ * Minimum CMS overall stars, or 'unrated' for facilities CMS has not rated.
+ *
+ * 'unrated' is a first-class option rather than an afterthought: a facility with no rating is not
+ * a 1-star facility, and folding the two together would hide new or recently-certified providers
+ * inside the worst band.
+ */
+export type StarFilter = 1 | 2 | 3 | 4 | 5 | 'unrated'
+
 export interface SearchHit {
   facility: FacilityRecord
   score: number
@@ -30,6 +39,8 @@ export interface SearchFilters {
   bedsMax?: number
   /** SNF-only -- ignored (has no effect) when `kind` is 'hospital'. */
   specialFocus?: SpecialFocusFilter
+  /** Applies to both kinds, but the two star programs are not the same scale -- see the Legend. */
+  minStars?: StarFilter
 }
 
 function norm(s: string): string {
@@ -41,6 +52,13 @@ export function passesFilters(facility: FacilityRecord, filters: SearchFilters):
   if (filters.kind && facility.kind !== filters.kind) return false
   if (filters.bedsMin != null && (facility.certifiedBeds == null || facility.certifiedBeds < filters.bedsMin)) return false
   if (filters.bedsMax != null && (facility.certifiedBeds == null || facility.certifiedBeds > filters.bedsMax)) return false
+  if (filters.minStars != null) {
+    if (filters.minStars === 'unrated') {
+      if (facility.overallRating != null) return false
+    } else {
+      if (facility.overallRating == null || facility.overallRating < filters.minStars) return false
+    }
+  }
   if (filters.specialFocus) {
     if (facility.kind !== 'snf') return false
     const status = getSpecialFocus(facility)
@@ -66,7 +84,12 @@ export function searchFacilities(
   const q = norm(query)
   const hasQuery = q.length >= 2
   const hasFilters =
-    filters.state != null || filters.kind != null || filters.bedsMin != null || filters.bedsMax != null || filters.specialFocus != null
+    filters.state != null ||
+    filters.kind != null ||
+    filters.bedsMin != null ||
+    filters.bedsMax != null ||
+    filters.specialFocus != null ||
+    filters.minStars != null
   if (!hasQuery && !hasFilters) return { hits: [], total: 0 }
 
   const all = [...snfs, ...hospitals]

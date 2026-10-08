@@ -48,6 +48,7 @@ import type { AppView } from './lib/routing'
 import { SearchEmptyState } from './components/SearchEmptyState'
 import { MarketMediansCard } from './components/MarketMediansCard'
 import { computeMarketMedians, describeStandouts } from './lib/marketMedians'
+import { readRecents, recordRecent, clearRecents, type RecentFacility } from './lib/recentFacilities'
 
 export default function App() {
   const [snfs, setSnfs] = useState<SnfRecord[]>([])
@@ -106,6 +107,8 @@ export default function App() {
       ),
     [navigate]
   )
+
+  const [recents, setRecents] = useState<RecentFacility[]>(() => readRecents())
 
   const [anchor, setAnchor] = useState<FacilityRecord | null>(null)
   /** Where to return when the back link is used: 'plain' = ScoutBoard's top-level list, a portfolio
@@ -243,8 +246,12 @@ export default function App() {
     const [kind, ccn] = route.facilityId.split(':')
     const found: FacilityRecord | undefined =
       kind === 'snf' ? snfs.find((f) => f.ccn === ccn) : hospitals.find((f) => f.ccn === ccn)
-    if (found) setAnchor(found)
-    else if (snfs.length > 0 && hospitals.length > 0) setAnchor(null)
+    if (found) {
+      setAnchor(found)
+      setRecents(recordRecent(found))
+    } else if (snfs.length > 0 && hospitals.length > 0) {
+      setAnchor(null)
+    }
   }, [route.facilityId, snfs, hospitals])
 
   const snfResults = useMemo(() => {
@@ -534,6 +541,8 @@ export default function App() {
             <SearchBar
               snfs={snfs}
               hospitals={hospitals}
+              dataReady={snfs.length > 0 && hospitals.length > 0}
+              loadError={errors[0] ?? null}
               onSelect={(facility) => {
                 setReturnTarget(null)
                 openFacility(facility)
@@ -542,6 +551,12 @@ export default function App() {
 
             {!anchor && (
               <SearchEmptyState
+                recents={recents}
+                onOpenRecent={(r) => {
+                  setReturnTarget(null)
+                  navigate({ view: 'search', facilityId: r.id, portfolioId: null })
+                }}
+                onClearRecents={() => setRecents(clearRecents())}
                 onTryExample={
                   exampleFacility
                     ? () => {
