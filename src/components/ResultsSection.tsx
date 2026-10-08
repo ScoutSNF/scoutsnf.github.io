@@ -12,7 +12,9 @@ export function ResultsSection({
   onToggleSave,
   costReportsByCcn,
   onCompare,
-  onViewOnMap
+  onViewOnMap,
+  onSelect,
+  selectedId
 }: {
   title?: string
   items: FacilityWithDistance<FacilityRecord>[]
@@ -21,6 +23,9 @@ export function ResultsSection({
   costReportsByCcn?: Map<string, FacilityYearRecord[]>
   onCompare?: (facility: FacilityRecord, distanceMiles: number) => void
   onViewOnMap?: (facility: FacilityRecord, distanceMiles: number) => void
+  onSelect?: (facility: FacilityRecord, distanceMiles: number) => void
+  /** `${kind}:${ccn}` of the shared selection, so the open row and its marker agree. */
+  selectedId?: string | null
 }) {
   const [sortKey, setSortKey] = useState<SortKey>('distance')
   const [asc, setAsc] = useState(true)
@@ -31,6 +36,16 @@ export function ResultsSection({
     if (!q) return items
     return items.filter(({ facility }) => facility.name.toLowerCase().includes(q))
   }, [items, search])
+
+  /** Whether any row in this list actually has an occupancy figure. */
+  const hasAnyOccupancy = useMemo(
+    () =>
+      items.some(
+        ({ facility }) =>
+          facility.occupancyPct != null || (costReportsByCcn?.get(facility.ccn)?.some((r) => r.occupancyPct != null) ?? false)
+      ),
+    [items, costReportsByCcn]
+  )
 
   const sorted = useMemo(() => {
     const copy = [...filtered]
@@ -129,7 +144,7 @@ export function ResultsSection({
             {sortBtn('name', 'Name')}
             {sortBtn('distance', 'Dist.', 'text-right', 'Straight-line distance, not drive time')}
             {sortBtn('beds', 'Beds', 'text-right')}
-            {sortBtn('occupancy', 'Occ.', 'text-right')}
+            {hasAnyOccupancy ? sortBtn('occupancy', 'Occ.', 'text-right') : <span />}
             {sortBtn('rating', 'Rating', 'text-right')}
             <span />
           </div>
@@ -147,6 +162,9 @@ export function ResultsSection({
                   costReportRecords={costReportsByCcn?.get(facility.ccn)}
                   onCompare={onCompare ? () => onCompare(facility, distanceMiles) : undefined}
                   onViewOnMap={onViewOnMap ? () => onViewOnMap(facility, distanceMiles) : undefined}
+                  onSelect={onSelect ? () => onSelect(facility, distanceMiles) : undefined}
+                  selected={selectedId === `${facility.kind}:${facility.ccn}`}
+                  showOccupancy={hasAnyOccupancy}
                 />
               ))}
             </div>

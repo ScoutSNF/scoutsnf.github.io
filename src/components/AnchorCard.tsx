@@ -7,7 +7,7 @@ import { SpecialFocusBadge } from './SpecialFocusBadge'
 import { BookmarkIcon } from './BookmarkIcon'
 import { InfoPopover } from './InfoPopover'
 import type { LegendKey } from '../lib/legend'
-import { titleCaseName, getOccupancyDisplay, getBedsDisplay } from '../lib/facilityDisplay'
+import { titleCaseName, getOccupancyDisplay, getBedsDisplay, formatDate } from '../lib/facilityDisplay'
 import { useOwnership } from '../hooks/useOwnership'
 import { OwnershipDropdown } from './OwnershipDropdown'
 import { CopyLinkButton } from './CopyLinkButton'
@@ -31,7 +31,6 @@ export function AnchorCard({
   const latestCostReport = costReportRecords && costReportRecords.length > 0 ? costReportRecords[costReportRecords.length - 1] : null
   const hospitalOccupancyText =
     facility.kind === 'hospital' && latestCostReport?.occupancyPct != null ? `${latestCostReport.occupancyPct}%` : occupancy.text
-  const { records: ownership, loading: ownershipLoading, error: ownershipError } = useOwnership(facility.ccn, facility.kind === 'snf')
 
   return (
     <div className="rounded-[--radius-lg] border border-[--color-border] bg-[--color-surface] p-4 shadow-[--shadow-sm]">
@@ -86,26 +85,42 @@ export function AnchorCard({
       </div>
 
       {facility.kind === 'snf' && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-          <span className="inline-flex items-center gap-1">
-            Health inspection: <StarRating rating={facility.healthInspectionRating} />
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[--color-text-secondary]">
+          <span className="inline-flex items-center gap-1.5">
+            Health inspection <StarRating rating={facility.healthInspectionRating} />
           </span>
-          <span className="inline-flex items-center gap-1">
-            Staffing: <StarRating rating={facility.staffingRating} />
+          <span className="inline-flex items-center gap-1.5">
+            Staffing <StarRating rating={facility.staffingRating} />
           </span>
-          <span className="inline-flex items-center gap-1">
-            Quality measures: <StarRating rating={facility.qualityMeasureRating} />
+          <span className="inline-flex items-center gap-1.5">
+            Quality measures <StarRating rating={facility.qualityMeasureRating} />
           </span>
           <InfoPopover legendKey="snf-sub-ratings" />
-          {facility.processingDate && <span>Data as of {facility.processingDate}</span>}
         </div>
       )}
 
-      {facility.kind === 'snf' && (
-        <OwnershipDropdown records={ownership} loading={ownershipLoading} error={ownershipError} />
+      {facility.kind === 'snf' && facility.processingDate && (
+        <p className="mt-2 text-sm text-[--color-text-muted]">
+          CMS Care Compare data as of {formatDate(facility.processingDate)}. Occupancy here is a recent daily-census
+          snapshot, separate from the fiscal-year figure in Financials.
+        </p>
       )}
     </div>
   )
+}
+
+/** The ownership roster, lifted out of the card so it can live under its own detail tab. */
+export function OwnershipSection({ facility }: { facility: FacilityRecord }) {
+  const { records, loading, error } = useOwnership(facility.ccn, facility.kind === 'snf')
+  if (facility.kind !== 'snf') {
+    return (
+      <p className="text-sm text-[--color-text-secondary]">
+        CMS publishes owner and managing-party disclosures for skilled nursing facilities only. Unavailable in this
+        dataset for hospitals.
+      </p>
+    )
+  }
+  return <OwnershipDropdown records={records} loading={loading} error={error} />
 }
 
 function Metric({

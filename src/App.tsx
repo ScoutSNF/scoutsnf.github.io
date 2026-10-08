@@ -30,7 +30,8 @@ import type { SavedFacilityRow } from './data/db'
 import { withinRadius } from './lib/market'
 import { resolvePortfolioMembers, buildPortfolioReport } from './lib/portfolioReport'
 import { SearchBar } from './components/SearchBar'
-import { AnchorCard } from './components/AnchorCard'
+import { AnchorCard, OwnershipSection } from './components/AnchorCard'
+import { DetailTabs } from './components/DetailTabs'
 import { CostReportCard } from './components/CostReportCard'
 import { RadiusSlider } from './components/RadiusSlider'
 import { ResultsSection } from './components/ResultsSection'
@@ -116,6 +117,7 @@ export default function App() {
   const [returnTarget, setReturnTarget] = useState<'plain' | string | null>(null)
   const [radiusMiles, setRadiusMiles] = useState(10)
   const [tab, setTab] = useState<'list' | 'map'>('list')
+  const [detailTab, setDetailTab] = useState('overview')
   const [facilityTab, setFacilityTab] = useState<'snf' | 'hospital'>('snf')
   const [mapFilter, setMapFilter] = useState<'all' | 'snf' | 'hospital'>('all')
   const [compareFacility, setCompareFacility] = useState<{ facility: FacilityRecord; distanceMiles: number } | null>(null)
@@ -594,7 +596,49 @@ export default function App() {
                   costReportRecords={costReportsByCcn.get(anchor.ccn)}
                 />
 
-                <CostReportCard records={costReportsByCcn.get(anchor.ccn) ?? []} kind={anchor.kind} />
+                {/* Panels stay mounted and hidden, so switching back to Financials keeps expanded
+                    rows, chart tooltips and scroll position rather than rebuilding the section. */}
+                <DetailTabs
+                  active={detailTab}
+                  onChange={setDetailTab}
+                  tabs={[
+                    {
+                      id: 'overview',
+                      label: 'Overview',
+                      content: (
+                        <div className="flex flex-col gap-3">
+                          {marketMedians && (
+                            <MarketMediansCard
+                              medians={marketMedians}
+                              standouts={marketStandouts}
+                              anchor={anchor}
+                              radiusMiles={radiusMiles}
+                            />
+                          )}
+                        </div>
+                      )
+                    },
+                    {
+                      id: 'financials',
+                      label: 'Financials',
+                      hint: (costReportsByCcn.get(anchor.ccn)?.length ?? 0) === 0 ? 'none filed' : undefined,
+                      content:
+                        (costReportsByCcn.get(anchor.ccn)?.length ?? 0) === 0 ? (
+                          <p className="text-sm text-[--color-text-secondary]">
+                            No HCRIS cost report is on file for this facility in the published dataset. That is an
+                            absence in the source data, not a zero.
+                          </p>
+                        ) : (
+                          <CostReportCard records={costReportsByCcn.get(anchor.ccn) ?? []} kind={anchor.kind} />
+                        )
+                    },
+                    {
+                      id: 'ownership',
+                      label: 'Ownership',
+                      content: <OwnershipSection facility={anchor} />
+                    }
+                  ]}
+                />
               </>
             )}
           </div>
@@ -609,14 +653,7 @@ export default function App() {
                 facilityCount={snfResults.length + hospitalResults.length}
               />
 
-              {marketMedians && (
-                <MarketMediansCard
-                  medians={marketMedians}
-                  standouts={marketStandouts}
-                  anchor={anchor}
-                  radiusMiles={radiusMiles}
-                />
-              )}
+
 
               <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
                 <button onClick={() => setTab('list')} className={`rounded-md px-3 py-1 ${tab === 'list' ? 'bg-white shadow dark:bg-slate-700' : ''}`}>
@@ -729,6 +766,8 @@ export default function App() {
                       costReportsByCcn={costReportsByCcn}
                       onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
                       onViewOnMap={handleViewOnMap}
+                      onSelect={handleMapSelect}
+                      selectedId={compareFacility ? `${compareFacility.facility.kind}:${compareFacility.facility.ccn}` : null}
                     />
                   ) : (
                     <>
@@ -765,6 +804,8 @@ export default function App() {
                         costReportsByCcn={costReportsByCcn}
                         onCompare={(facility, distanceMiles) => setCompareFacility({ facility, distanceMiles })}
                         onViewOnMap={handleViewOnMap}
+                        onSelect={handleMapSelect}
+                        selectedId={compareFacility ? `${compareFacility.facility.kind}:${compareFacility.facility.ccn}` : null}
                       />
                     </>
                   )}

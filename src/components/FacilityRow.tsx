@@ -19,7 +19,10 @@ export function FacilityRow({
   onToggleSave,
   costReportRecords,
   onCompare,
-  onViewOnMap
+  onViewOnMap,
+  onSelect,
+  selected = false,
+  showOccupancy = true
 }: {
   facility: FacilityRecord
   distanceMiles: number
@@ -29,8 +32,21 @@ export function FacilityRow({
   onCompare?: () => void
   /** Highlights this facility on ScoutSNF's own map, distinct from the external "Open in Google Maps" link below. */
   onViewOnMap?: () => void
+  /** Raised when this row becomes the open one, so the map can highlight the matching marker. */
+  onSelect?: () => void
+  /** True when this row is the shared selection -- set either from here or from a marker click. */
+  selected?: boolean
+  /** False when no row in this list has an occupancy figure, so the column is dropped rather than
+   *  rendering a stripe of N/A that reads as missing work. */
+  showOccupancy?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
+
+  function toggle() {
+    const next = !expanded
+    setExpanded(next)
+    if (next) onSelect?.()
+  }
   const { ref, info } = useLazyPlaceInfo(facility.ccn, facility.name, facility.city, facility.state)
   const { records: ownership, loading: ownershipLoading, error: ownershipError } = useOwnership(
     facility.ccn,
@@ -44,12 +60,12 @@ export function FacilityRow({
   const displayName = titleCaseName(facility.name)
 
   return (
-    <div ref={ref} className="border-b border-slate-200 dark:border-slate-800">
+    <div ref={ref} className={`border-b border-[--color-border] ${selected ? 'bg-[--color-brand-subtle]' : ''}`}>
       {/* Phone: a card. Names wrap in full and every metric is labelled, replacing a seven-column
           grid that truncated most names to a few characters and shrank the as-of date to 9px. */}
       <button
         className="flex w-full flex-col gap-2 px-3 py-3 text-left hover:bg-slate-100 dark:hover:bg-slate-900 sm:hidden"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={toggle}
       >
         <span className="flex w-full items-start gap-2.5">
           <span className="h-9 w-9 shrink-0 overflow-hidden rounded-md">
@@ -101,13 +117,15 @@ export function FacilityRow({
             <span className="text-slate-500 dark:text-slate-400">Beds </span>
             <span className="font-medium tabular-nums">{getBedsDisplay(facility)}</span>
           </span>
-          <span>
-            <span className="text-slate-500 dark:text-slate-400">Occupancy </span>
-            <span className="font-medium tabular-nums">{occupancyText}</span>
-            {facility.kind === 'snf' && occupancy.asOfLabel && (
-              <span className="text-slate-500 dark:text-slate-400"> ({occupancy.asOfLabel})</span>
-            )}
-          </span>
+          {showOccupancy && (
+            <span>
+              <span className="text-[--color-text-secondary]">Occupancy </span>
+              <span className="font-medium tabular-nums">{occupancyText}</span>
+              {facility.kind === 'snf' && occupancy.asOfLabel && (
+                <span className="text-[--color-text-secondary]"> ({occupancy.asOfLabel})</span>
+              )}
+            </span>
+          )}
           <span className="inline-flex items-center gap-1">
             <span className="text-slate-500 dark:text-slate-400">Rating</span>
             <StarRating rating={facility.overallRating} />
@@ -118,7 +136,7 @@ export function FacilityRow({
       {/* Desktop: the dense sortable table, which works well once there is room for it. */}
       <button
         className="hidden w-full grid-cols-[1.75rem_minmax(0,1fr)_2.75rem_2.25rem_4rem_5rem_1.25rem] items-center gap-3 px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-900 sm:grid"
-        onClick={() => setExpanded((v) => !v)}
+        onClick={toggle}
       >
         <span className="h-7 w-7 shrink-0 overflow-hidden rounded-md">
           {info?.photoUrl ? (
@@ -143,14 +161,16 @@ export function FacilityRow({
         </span>
         <span className="text-right text-sm tabular-nums">{distanceMiles.toFixed(2)} mi</span>
         <span className="text-right text-sm tabular-nums">{getBedsDisplay(facility)}</span>
-        <span className="flex flex-col items-end">
-          <span className="text-sm tabular-nums">{occupancyText}</span>
-          {facility.kind === 'snf' && occupancy.asOfLabel && (
-            <span className="text-right text-[10px] leading-tight text-slate-500 dark:text-slate-400">
-              {occupancy.asOfLabel}
-            </span>
-          )}
-        </span>
+        {showOccupancy ? (
+          <span className="flex flex-col items-end">
+            <span className="text-sm tabular-nums">{occupancyText}</span>
+            {facility.kind === 'snf' && occupancy.asOfLabel && (
+              <span className="text-right text-[10px] leading-tight text-[--color-text-muted]">{occupancy.asOfLabel}</span>
+            )}
+          </span>
+        ) : (
+          <span />
+        )}
         <span className="flex justify-end">
           <StarRating rating={facility.overallRating} />
         </span>
