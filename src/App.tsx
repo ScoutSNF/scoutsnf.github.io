@@ -33,6 +33,7 @@ import { SearchBar } from './components/SearchBar'
 import { AnchorCard, OwnershipSection } from './components/AnchorCard'
 import { DetailTabs } from './components/DetailTabs'
 import { CompareTray } from './components/CompareTray'
+import { CommandMenu, MOD_KEY } from './components/CommandMenu'
 import { MAX_COMPARE } from './components/CompareTable'
 import { CostReportCard } from './components/CostReportCard'
 import { RadiusSlider } from './components/RadiusSlider'
@@ -120,6 +121,7 @@ export default function App() {
   const [radiusMiles, setRadiusMiles] = useState(10)
   const [tab, setTab] = useState<'list' | 'map'>('list')
   const [detailTab, setDetailTab] = useState('overview')
+  const [commandOpen, setCommandOpen] = useState(false)
 
   /**
    * Facilities picked for side-by-side comparison. Held in App rather than inside the tray so a
@@ -250,6 +252,17 @@ export default function App() {
   useEffect(() => {
     setCompareFacility(null)
   }, [anchor])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setCommandOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   /**
    * Resolve the routed facility against the loaded roster.
@@ -454,6 +467,14 @@ export default function App() {
             {view === 'board' ? 'ScoutBoard' : view === 'portfolio' ? (viewingPortfolio?.name ?? 'Portfolio') : view === 'legend' ? 'Sources & definitions' : view === 'settings' ? 'Settings' : 'Facility search'}
           </h1>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCommandOpen(true)}
+              className="hidden items-center gap-2 rounded-[--radius-md] border border-[--color-border-strong] px-2.5 py-1.5 text-sm text-[--color-text-secondary] hover:bg-[--color-surface-hover] sm:flex"
+            >
+              <span>Quick find</span>
+              <kbd className="rounded-[--radius-sm] border border-[--color-border] px-1 font-sans text-xs">{MOD_KEY}</kbd>
+              <kbd className="rounded-[--radius-sm] border border-[--color-border] px-1 font-sans text-xs">K</kbd>
+            </button>
             {refreshing && (
               <span
                 title={refreshStage || 'Updating data…'}
@@ -843,6 +864,23 @@ export default function App() {
         </main>
       )}
       </div>
+
+      <CommandMenu
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        snfs={snfs}
+        hospitals={hospitals}
+        onSelectFacility={(f) => {
+          setReturnTarget(null)
+          openFacility(f)
+        }}
+        onNavigate={navigateFromNav}
+        extraActions={
+          compareSet.length > 0
+            ? [{ id: 'clear-compare', label: `Clear comparison (${compareSet.length})`, hint: 'Action', run: () => setCompareSet([]) }]
+            : []
+        }
+      />
 
       <CompareTray
         selected={compareSet}

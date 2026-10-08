@@ -52,12 +52,26 @@ export function SettingsPage({
   const [hospitalError, setHospitalError] = useState<string | null>(null)
   const [theme, setTheme] = useState<ThemePreference>(() => readThemePreference())
   const [recheck, setRecheck] = useState<'idle' | 'running' | 'done'>('idle')
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))
+  const standalone =
+    typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches === true
   const [recheckResult, setRecheckResult] = useState<{ collisionCount: number; checkedAgainstLatest: boolean } | null>(null)
 
   useEffect(() => {
     setSnfError(localStorage.getItem(SNF_ROSTER_ERROR_KEY))
     setHospitalError(localStorage.getItem(HOSPITAL_ROSTER_ERROR_KEY))
   }, [refreshing])
+
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
 
   const bedCounts = rosterManifest?.hospital.bedCounts ?? null
 
@@ -159,6 +173,26 @@ export function SettingsPage({
             </p>
           </div>
         </div>
+      </Section>
+
+      <Section
+        title="Offline and cached data"
+        description="What this browser can still show without a connection, and what it cannot."
+      >
+        <dl>
+          <Row label="Connection" value={online ? 'Online' : 'Offline'} tone={online ? 'normal' : 'bad'} />
+          <Row label="App installed as a PWA" value={standalone ? 'Yes' : 'No'} />
+          <Row
+            label="Facility data cached in this browser"
+            value={snfFetchedAt ? `Yes — last fetched ${formatDate(snfFetchedAt)}` : 'Not yet cached'}
+          />
+        </dl>
+        <p className="mt-2 text-sm text-[--color-text-secondary]">
+          Offline means the facility data this browser has already downloaded, carrying the dates shown above — not
+          live CMS data. Map tiles are <strong>not</strong> cached, because OpenStreetMap's usage policy forbids
+          pre-caching them, so the map will be blank offline. Owner and manager lookups query CMS live and need a
+          connection.
+        </p>
       </Section>
 
       <Section title="Definitions and sources">
