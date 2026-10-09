@@ -20,6 +20,8 @@ function snf(overrides: Partial<SnfRecord> = {}): SnfRecord {
     healthInspectionRating: 3,
     staffingRating: 3,
     qualityMeasureRating: 3,
+    totalNurseStaffingHprd: 3.5,
+    county: 'Sangamon',
     ownershipType: null,
     specialFocusStatus: null,
     specialFocusStatusRaw: null,

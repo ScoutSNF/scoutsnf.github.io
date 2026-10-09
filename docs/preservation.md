@@ -149,6 +149,31 @@ removes or replaces that page has to carry them somewhere else first.
   Remove a facility from one: on that portfolio's landing page.
 - Portfolio map view, cluster analysis, anchor drill-down, and overlap/shared-market reporting.
 
+### Portfolio summary
+
+Sits at the top of every portfolio page, above the List/Map tabs. A generated headline (no model
+call, no network) plus one row per SNF in the portfolio across five columns: overall rating,
+staffing rating, total nurse staffing HPRD, occupancy and health inspection rating. Higher is
+better for all five, which is what lets one comparison serve every column.
+
+Each cell shows the home's own value with the area median under it. **Only the gap is coloured** —
+green better, red worse, grey within ±2% or uncomparable. The value itself is never coloured: a
+2-star home is not a finding, a 2-star home in a 4-star market is.
+
+The area median is the median of SNFs within that home's **own saved radius**, excluding the home
+itself. Below 5 neighbours it falls back to the county median and the cell is labelled `county`.
+With neither, the row says so rather than inventing a comparison. Each row states its comparison
+set size ("vs 139 SNFs within 10 mi").
+
+A missing metric renders "—", never 0, and is excluded from the headline's count.
+
+**There is no composite score, buy signal or projected return here, and none should be added.**
+
+On a phone the table scrolls sideways inside its own box with the name column sticky; the page
+itself must never scroll sideways. That needs `min-w-0`/`max-w-full` on the section and `w-full
+min-w-0` on the portfolio page's root — without them the table's min-content width propagates up
+and drags the whole document sideways.
+
 ## Exports
 
 - Every export is a styled `.xlsx` workbook. Never CSV, never a raw dump.

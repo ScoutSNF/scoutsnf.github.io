@@ -14,6 +14,8 @@ import { StandaloneRow } from './StandaloneRow'
 import { PortfolioAnchorDrillDown } from './PortfolioAnchorDrillDown'
 import { PortfolioMemberRow } from './PortfolioMemberRow'
 import { CompareCard } from './CompareCard'
+import { PortfolioSummary } from './PortfolioSummary'
+import { buildPortfolioSummary } from '../lib/portfolioSummary'
 import { titleCaseName } from '../lib/facilityDisplay'
 
 const CLUSTER_THRESHOLD_KEY = 'scoutsnf:portfolioClusterThreshold'
@@ -49,6 +51,10 @@ export function PortfolioReport({
   onDelete: () => void
   onRemoveMember: (facilityId: string) => void
 }) {
+  // Compared against the full SNF roster, so it recomputes only when the roster or the
+  // portfolio's membership changes -- not on every tab or filter click.
+  const summary = useMemo(() => buildPortfolioSummary(data.members, snfs), [data.members, snfs])
+
   const [tab, setTab] = useState<'list' | 'map'>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [radiusOverride, setRadiusOverride] = useState<number | null>(null)
@@ -168,16 +174,18 @@ export function PortfolioReport({
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4 pb-24">
-      <div className="flex items-center justify-between gap-2">
-        <div>
+    <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-4 p-4 pb-24">
+      {/* Wraps on a narrow screen: the two action buttons together are wider than a phone, and as
+          a non-wrapping shrink-0 row they pushed the whole page sideways. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold">{portfolio.name}</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {data.members.length} facilit{data.members.length === 1 ? 'y' : 'ies'}
             {data.statesCovered.length > 0 ? ` · ${data.statesCovered.join(', ')}` : ''}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={exportReport}
             disabled={exporting}
@@ -204,6 +212,8 @@ export function PortfolioReport({
         </p>
       ) : (
         <>
+          <PortfolioSummary data={summary} />
+
           <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5 text-sm dark:bg-slate-800">
             <button onClick={() => setTab('list')} className={`rounded-md px-3 py-1 ${tab === 'list' ? 'bg-white shadow dark:bg-slate-700' : ''}`}>
               List

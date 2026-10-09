@@ -30,6 +30,10 @@ export interface SnfRecord {
   healthInspectionRating: number | null
   staffingRating: number | null
   qualityMeasureRating: number | null
+  /** CMS case-mix adjusted total nurse staffing hours per resident per day (RN + LPN + aide). */
+  totalNurseStaffingHprd: number | null
+  /** CMS "County/Parish", used to fall back to a county median where a radius is too thin. */
+  county: string | null
   ownershipType: string | null
   specialFocusStatus: SpecialFocusStatus | null
   /** CMS's verbatim `special_focus_status` cell, kept so a future classification change can be

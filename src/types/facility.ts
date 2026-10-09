@@ -39,6 +39,18 @@ export interface SnfRecord {
   healthInspectionRating: number | null
   staffingRating: number | null
   qualityMeasureRating: number | null
+  /**
+   * CMS's case-mix **adjusted** total nurse staffing hours per resident per day (RN + LPN + aide).
+   * Adjusted rather than reported, because it is the figure CMS risk-adjusts for resident acuity
+   * and so the only one comparable between facilities.
+   *
+   * Optional on the type: rosters published before this field was mapped are still cached in
+   * browsers, and a record read back from IndexedDB will not have it. Treat `undefined` exactly
+   * like `null` -- unknown -- never as zero.
+   */
+  totalNurseStaffingHprd?: number | null
+  /** CMS "County/Parish". Optional for the same cached-roster reason as `totalNurseStaffingHprd`. */
+  county?: string | null
   ownershipType: string | null
   specialFocusStatus: SpecialFocusStatus | null
   /** CMS's verbatim `special_focus_status` cell. */
