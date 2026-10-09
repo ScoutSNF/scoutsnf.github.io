@@ -42,6 +42,17 @@ export async function fetchSnfRecords(onRetry?: OnRetry): Promise<SnfRecord[]> {
     healthInspection: findColumn(table, ['health_inspection_rating']),
     staffing: findColumn(table, ['staffing_rating']),
     qm: findColumn(table, ['qm_rating', 'quality_measure_rating']),
+    // Adjusted, not reported: CMS risk-adjusts this one for resident acuity, so it is the only
+    // nurse-staffing figure comparable between facilities. Several spellings are listed because
+    // CMS has renamed these columns across releases; findColumn returns -1 if none match, which
+    // leaves the field null rather than failing the build -- a thin roster, not a broken one.
+    hprd: findColumn(table, [
+      'adjusted_total_nurse_staffing_hours_per_resident_per_day',
+      'adjusted_total_nurse_staffing_hours_per_resident_day',
+      'total_nurse_staffing_hours_per_resident_per_day',
+      'adjusted_total_nurse_staffing'
+    ]),
+    county: findColumn(table, ['county_parish', 'provider_county_name', 'county_name', 'county']),
     ownership: findColumn(table, ['ownership_type']),
     sff: findColumn(table, ['special_focus_status', 'special_focus_facility']),
     processingDate: findColumn(table, ['processing_date'])
@@ -73,6 +84,8 @@ export async function fetchSnfRecords(onRetry?: OnRetry): Promise<SnfRecord[]> {
       healthInspectionRating: col.healthInspection !== -1 ? parseNum(row[col.healthInspection]) : null,
       staffingRating: col.staffing !== -1 ? parseNum(row[col.staffing]) : null,
       qualityMeasureRating: col.qm !== -1 ? parseNum(row[col.qm]) : null,
+      totalNurseStaffingHprd: col.hprd !== -1 ? parseNum(row[col.hprd]) : null,
+      county: col.county !== -1 ? row[col.county]?.trim() || null : null,
       ownershipType: col.ownership !== -1 ? row[col.ownership] || null : null,
       specialFocusStatus: col.sff !== -1 ? classifySpecialFocus(row[col.sff]) : null,
       specialFocusStatusRaw: col.sff !== -1 ? row[col.sff]?.trim() || null : null,
