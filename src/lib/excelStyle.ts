@@ -26,6 +26,43 @@ export function styleHeaderRow(row: ExcelJS.Row, fill = EXCEL_COLORS.teal, font 
   row.height = 28
 }
 
+/** Points of row height one wrapped line of body text needs. */
+const LINE_HEIGHT = 15
+
+/**
+ * Lines a wrapped cell needs.
+ *
+ * Excel's column width unit is roughly one character of the default font, so a width-34 column
+ * fits about 34 characters -- not 61, which is what an earlier `width * 1.8` assumed and is why
+ * every long facility name, address and ownership string came out clipped.
+ *
+ * Counted by greedy word wrap rather than `length / charsPerLine`, because Excel breaks at word
+ * boundaries: "Lilac Manor Rehabilitation and Nursing Center" is 45 characters but still needs two
+ * lines in a 34-wide column, where the division says one.
+ */
+export function wrappedLines(text: string, colWidth: number): number {
+  const perLine = Math.max(4, Math.floor(colWidth))
+  let total = 0
+  for (const paragraph of String(text).split('\n')) {
+    let lines = 1
+    let used = 0
+    for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+      if (used > 0 && used + 1 + word.length > perLine) {
+        lines++
+        used = 0
+      }
+      used = used === 0 ? word.length : used + 1 + word.length
+      // A single word longer than the column wraps mid-word across further lines.
+      if (used > perLine) {
+        lines += Math.ceil(used / perLine) - 1
+        used = used % perLine || perLine
+      }
+    }
+    total += lines
+  }
+  return Math.max(1, total)
+}
+
 export function addTitle(sheet: ExcelJS.Worksheet, text: string, cols: number) {
   sheet.mergeCells(1, 1, 1, cols)
   const cell = sheet.getCell(1, 1)
@@ -40,11 +77,6 @@ export function addSubtitle(sheet: ExcelJS.Worksheet, rowIndex: number, text: st
   const cell = sheet.getCell(rowIndex, 1)
   cell.value = text
   cell.font = { italic: true, size: 10, color: { argb: EXCEL_COLORS.muted } }
-}
-
-/** Rough estimate of characters that fit on one line of an Excel column at this width. */
-function charsPerLine(colWidth: number): number {
-  return Math.max(4, Math.floor(colWidth * 1.8))
 }
 
 /** Column widths, read back off the sheet, in the same order cells are written. */
@@ -68,13 +100,17 @@ export function addTable(
   const headerRow = sheet.getRow(startRow)
   headers.forEach((h, i) => (headerRow.getCell(i + 1).value = h))
   styleHeaderRow(headerRow)
+  // Headers wrap too, and a narrow column with a long header was clipped the same way the body
+  // cells were -- "Special Focus" came out as "Speci"/"al".
+  const headerLines = headers.reduce((max, h, i) => Math.max(max, wrappedLines(h, widths[i] ?? 12)), 1)
+  headerRow.height = Math.max(28, headerLines * LINE_HEIGHT + 6)
 
   rows.forEach((values, i) => {
     const row = sheet.getRow(startRow + 1 + i)
     let maxLines = 1
     values.forEach((v, ci) => {
       row.getCell(ci + 1).value = v
-      const lines = Math.ceil(String(v).length / charsPerLine(widths[ci] ?? 12))
+      const lines = wrappedLines(String(v), widths[ci] ?? 12)
       if (lines > maxLines) maxLines = lines
     })
     const customFill = opts?.rowFill?.(values, i)
@@ -85,7 +121,7 @@ export function addTable(
       cell.font = { color: { argb: EXCEL_COLORS.ink }, size: 10.5 }
       cell.alignment = { vertical: 'middle', wrapText: true }
     })
-    row.height = Math.max(18, maxLines * 14)
+    row.height = Math.max(18, maxLines * LINE_HEIGHT)
   })
 
   if (rows.length === 0) {

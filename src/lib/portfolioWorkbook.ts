@@ -14,7 +14,8 @@ import {
   newWorkbook,
   workbookToBlob,
   styleHeaderRow,
-  thinBorder
+  thinBorder,
+  wrappedLines
 } from './excelStyle'
 
 export { downloadBlob } from './excelStyle'
@@ -65,8 +66,10 @@ const DETAIL_WIDTHS = [
   { width: 8 },
   { width: 26 },
   { width: 9 },
-  { width: 24 },
-  { width: 6 },
+  { width: 26 },
+  // 22, not 6: this column holds "Special Focus Facility" and "SFF Candidate", and its own header
+  // is 13 characters. At 6 it wrapped to three lines and was cut off in every report.
+  { width: 22 },
   { width: 11 },
   { width: 9 },
   { width: 8 },
@@ -108,7 +111,8 @@ function marketFacilityRows(items: MarketFacility[]): (string | number)[][] {
 }
 
 const MARKET_HEADERS = ['Name', 'City', 'State', 'Beds', 'Occupancy', 'Rating', 'Distance (mi)', 'Nearest Facility']
-const MARKET_WIDTHS = [{ width: 34 }, { width: 16 }, { width: 8 }, { width: 8 }, { width: 11 }, { width: 8 }, { width: 13 }, { width: 26 }]
+// The last column holds another facility's full name, so it gets the same room as the first.
+const MARKET_WIDTHS = [{ width: 34 }, { width: 16 }, { width: 8 }, { width: 8 }, { width: 11 }, { width: 8 }, { width: 13 }, { width: 34 }]
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
@@ -210,7 +214,9 @@ function addDistanceMatrix(
       const fill = dist != null && dist <= CANNIBALIZATION_THRESHOLD_MILES ? EXCEL_COLORS.amber3plus : EXCEL_COLORS.white
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } }
     })
-    row.height = 18
+    // This sheet writes its own rows rather than going through addTable, so it has to size them
+    // itself; a flat 18 clipped every facility name long enough to wrap.
+    row.height = Math.max(18, wrappedLines(String(labelCell.value), sheet.getColumn(1).width ?? 34) * 15)
   })
 }
 
@@ -232,7 +238,8 @@ export async function buildPortfolioWorkbook(
   // --- Summary sheet ---
   const summary = wb.addWorksheet('Summary', { views: [{ showGridLines: false }] })
   applyPageSetup(summary)
-  summary.columns = [...DETAIL_WIDTHS, { width: 18 }]
+  // Cluster names are built from city names and run long ("Rochester / Fairport").
+  summary.columns = [...DETAIL_WIDTHS, { width: 26 }]
   addTitle(summary, `Portfolio report: ${portfolio.name}`, DETAIL_HEADERS.length + 1)
   addSubtitle(
     summary,
