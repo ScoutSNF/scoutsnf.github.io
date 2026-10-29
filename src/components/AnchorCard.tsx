@@ -9,8 +9,10 @@ import { InfoPopover } from './InfoPopover'
 import type { LegendKey } from '../lib/legend'
 import { titleCaseName, getOccupancyDisplay, getBedsDisplay, formatDate } from '../lib/facilityDisplay'
 import { useOwnership } from '../hooks/useOwnership'
+import { useLazyPlaceInfo } from '../hooks/useLazyPlaceInfo'
 import { OwnershipDropdown } from './OwnershipDropdown'
 import { CopyLinkButton } from './CopyLinkButton'
+import { googleSearchUrl } from '../lib/facilityDisplay'
 
 export function AnchorCard({
   facility,
@@ -28,12 +30,16 @@ export function AnchorCard({
   costReportRecords?: FacilityYearRecord[]
 }) {
   const occupancy = getOccupancyDisplay(facility)
+  // CMS publishes no website for a facility, so the real address comes from the optional Google
+  // Places lookup and is only ever present when a key is configured. Without one this resolves to
+  // null and the control below falls back to a search rather than disappearing.
+  const { ref: placeRef, info } = useLazyPlaceInfo(facility.ccn, facility.name, facility.city, facility.state)
   const latestCostReport = costReportRecords && costReportRecords.length > 0 ? costReportRecords[costReportRecords.length - 1] : null
   const hospitalOccupancyText =
     facility.kind === 'hospital' && latestCostReport?.occupancyPct != null ? `${latestCostReport.occupancyPct}%` : occupancy.text
 
   return (
-    <div className="rounded-[--radius-lg] border border-[--color-border] bg-[--color-surface] p-4 shadow-[--shadow-sm]">
+    <div ref={placeRef} className="rounded-[--radius-lg] border border-[--color-border] bg-[--color-surface] p-4 shadow-[--shadow-sm]">
       {/* Identity first, actions below it rather than crowded alongside -- at 390px a row of
           icon buttons beside a wrapping facility name squeezed the name to a few characters. */}
       <div className="flex flex-col gap-2">
@@ -64,6 +70,19 @@ export function AnchorCard({
 
         <div className="flex flex-wrap items-center gap-2">
           <CopyLinkButton facility={facility} />
+          {/* Two different things, labelled as two different things. A resolved Places result is
+              the facility's own site; without one this is a search for it, and saying "Official
+              website" over a search would be a claim the link cannot keep. Only the facility's
+              public CMS name, city and state go into the query. */}
+          <a
+            href={info?.website ?? googleSearchUrl(facility)}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-[2.25rem] items-center gap-1.5 rounded-[--radius-md] border border-[--color-border-strong] px-2.5 py-1.5 text-sm font-medium text-[--color-text] hover:bg-[--color-surface-hover]"
+          >
+            {info?.website ? 'Official website' : 'Find official site'}
+            <span aria-hidden="true">↗</span>
+          </a>
           {actions}
         </div>
       </div>
