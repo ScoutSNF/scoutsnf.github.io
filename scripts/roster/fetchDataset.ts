@@ -72,8 +72,11 @@ export async function fetchCmsDatasetTable(datasetId: string, label: string, onR
       const table = parseCsvTable(text)
       if (table.rows.length > 0) csvTable = table
     }
-  } catch {
-    // fall through to the datastore query API below
+  } catch (err) {
+    // Previously swallowed in silence, which hid half the story: when both paths fail, the log
+    // showed only the datastore error and gave no hint that the metadata/CSV route had failed
+    // first, or why.
+    console.warn(`  ${label}: CSV route unavailable (${(err as Error)?.message ?? 'unknown error'}) — falling back to the datastore query API`)
   }
 
   if (!csvTable) return fetchAllRowsViaQueryApi(datasetId, label, onRetry)

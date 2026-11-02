@@ -1,5 +1,7 @@
 import { writeFile, readFile, mkdir } from 'node:fs/promises'
+import { appendFileSync } from 'node:fs'
 import path from 'node:path'
+import { SourceFetchError } from './fetchRetry.js'
 import type { SnfRecord, HospitalRecord } from './types.js'
 import { fetchSnfRecords } from './fetchSnfRoster.js'
 import { fetchHospitalRecords } from './fetchHospitalRoster.js'
@@ -131,10 +133,38 @@ export async function run(): Promise<void> {
   console.log(`Wrote ${MANIFEST_PATH}`)
 }
 
+/**
+ * One workflow refreshes both rosters, so GitHub's failure email can only ever name the workflow
+ * -- "SNF/hospital roster refresh" -- and reads as though both halves broke. These two make the
+ * run page itself say which dataset it was: an `::error::` annotation surfaces at the top of the
+ * run, and the step summary is the first thing on the page the email links to.
+ */
+function reportFailure(err: unknown): void {
+  const source = err instanceof SourceFetchError ? err.sourceLabel : null
+  const title = source ? `${source} failed` : 'Roster pipeline failed'
+  const detail = (err as Error)?.message ?? String(err)
+
+  console.log(`::error title=${title}::${detail}`)
+
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY
+  if (!summaryPath) return
+  const lines = [`## ${title}`, '', `\`\`\``, detail, `\`\`\``, '']
+  if (err instanceof SourceFetchError && err.status === 403) {
+    lines.push(
+      'A 403 is a refusal, not a missing dataset: the usual causes are a new rate limit, a blocked',
+      'client, or a retired endpoint. The response body above is what CMS actually said.',
+      ''
+    )
+  }
+  lines.push('Nothing was published and no pull request was opened; the live site still serves the', 'previous roster.')
+  appendFileSync(summaryPath, lines.join('\n') + '\n')
+}
+
 const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1]}`
 if (isMain) {
   run().catch((err) => {
     console.error('Roster pipeline failed:', err)
+    reportFailure(err)
     process.exitCode = 1
   })
 }
