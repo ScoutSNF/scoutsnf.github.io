@@ -43,16 +43,24 @@ export default {
       return new Response('Forbidden', { status: 403 })
     }
 
-    const init = { method: request.method, headers: {} }
+    // Every relayed request identifies itself. A Worker's fetch() sends no User-Agent unless
+    // one is set, and this object starts empty, so without this the target sees an anonymous
+    // client — which is the first thing an API rate-limiter blocks. data.cms.gov began
+    // refusing unidentified traffic with a flat 403 in late October 2026; it broke the roster
+    // pipeline (fixed separately in scripts/roster/fetchRetry.ts) and it breaks every CMS call
+    // relayed through here, which is what powers owner search and the per-facility ownership
+    // list. Nominatim has always needed this and keeps its contact address, as its usage
+    // policy asks for one: https://operations.osmfoundation.org/policies/nominatim/
+    const init = {
+      method: request.method,
+      headers: { 'User-Agent': 'ScoutSNF/1.0 (+https://github.com/ScoutSNF/scoutsnf.github.io)' }
+    }
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       init.body = await request.arrayBuffer()
       const contentType = request.headers.get('Content-Type')
       if (contentType) init.headers['Content-Type'] = contentType
     }
     if (targetHost === 'nominatim.openstreetmap.org') {
-      // Nominatim's usage policy requires every request to identify itself with a
-      // valid User-Agent (and ideally a contact) — unidentified traffic is blocked
-      // outright with "Access denied". See https://operations.osmfoundation.org/policies/nominatim/
       init.headers['User-Agent'] = 'ScoutSNF/1.0 (+https://scoutsnf.github.io; contact: shalomalizakatz@gmail.com)'
     }
 
