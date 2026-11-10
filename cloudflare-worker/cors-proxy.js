@@ -14,7 +14,10 @@
  * Deployed at: https://scoutsnf-cms-proxy.shalomalizakatz.workers.dev
  * Referenced by: src/lib/corsProxy.ts (VITE_CMS_PROXY_BASE override)
  */
-const ALLOWED_HOSTS = ['data.cms.gov', 'geocoding.geo.census.gov', 'nominatim.openstreetmap.org']
+// Exported so cors-proxy.test.js can assert every host here gets an identified request --
+// adding a host without one is the bug that broke owner search, and the test now catches it.
+// Cloudflare only ever reads the default export, so this changes nothing at runtime.
+export const ALLOWED_HOSTS = ['data.cms.gov', 'geocoding.geo.census.gov', 'nominatim.openstreetmap.org']
 
 export default {
   async fetch(request) {

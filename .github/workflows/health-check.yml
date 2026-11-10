@@ -1,0 +1,87 @@
+name: Production health check
+
+# Checks the deployed site and the hand-deployed Cloudflare worker, not this repository. Both can
+# drift from it: the roster goes stale if the weekly pipeline fails, its PR is never merged, or
+# Pages never deploys; the worker silently stops relaying CMS if it is not redeployed or CMS
+# starts refusing it, which breaks owner search while everything else still looks fine.
+on:
+  schedule:
+    # Daily. Minute 17 rather than 0 -- scheduled runs bunch up on the hour and get delayed.
+    - cron: "17 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No npm install on purpose: the check is dependency-free, so a broken lockfile or a
+      # registry outage cannot stop it reporting on production.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check the live site and worker
+        id: health
+        continue-on-error: true
+        run: node scripts/health/check.mjs
+
+      - name: Open, update or close the alert issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.health.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          LABEL=health-check
+          TITLE="Production health check failing"
+
+          gh label create "$LABEL" --color B60205 --description "Automated check of the live site and CORS worker" --force >/dev/null 2>&1 || true
+
+          EXISTING=$(gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&labels=${LABEL}" --jq '.[0].number // empty')
+
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -n "$EXISTING" ]; then
+              gh issue comment "$EXISTING" --body "Recovered — the checks passed on ${RUN_URL}. Closing."
+              gh issue close "$EXISTING"
+              echo "Closed #${EXISTING}: checks are passing again."
+            else
+              echo "All checks passed; nothing to report."
+            fi
+            exit 0
+          fi
+
+          # The step summary already holds the per-check detail; reuse it as the issue body so the
+          # two never disagree.
+          BODY="The automated check of the live site and the Cloudflare CORS worker is failing.
+
+          See the run for which checks failed and why: ${RUN_URL}
+
+          This checks **production**, not this repository — a green repository and a failing check
+          here usually means something deployed is out of date: the roster never got refreshed or
+          merged, Pages never deployed, or the worker needs redeploying from
+          \`cloudflare-worker/cors-proxy.js\`.
+
+          This issue closes itself when the checks pass again."
+
+          if [ -n "$EXISTING" ]; then
+            # Updated rather than commented on, so a long outage does not post one comment a day.
+            gh issue edit "$EXISTING" --body "$BODY"
+            echo "Updated #${EXISTING}."
+          else
+            gh issue create --title "$TITLE" --label "$LABEL" --body "$BODY" >/dev/null
+            echo "Opened a new alert issue."
+          fi
+
+      # Both signals, as asked: the issue above is the durable record, and failing the run is what
+      # sends the email.
+      - name: Fail the run if any check failed
+        if: steps.health.outcome != 'success'
+        run: |
+          echo "::error title=Production health check failed::The live site or the CORS worker is not healthy — see the job summary."
+          exit 1
