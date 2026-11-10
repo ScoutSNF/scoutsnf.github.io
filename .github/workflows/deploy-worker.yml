@@ -1,0 +1,67 @@
+name: Deploy CORS worker
+
+# The worker was deployed by hand, so this repository and the running worker could disagree
+# indefinitely with nothing noticing. That is how owner search stayed broken: the fix existed
+# here while production still ran the old code. Now a change to the worker deploys itself.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare-worker/**"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Without the token the deploy cannot work, and failing every push to main would be noise.
+    # Skipping with a clear message keeps the signal honest until the secret is added.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check the Cloudflare token is configured
+        id: gate
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "${TOKEN}" ]; then
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Worker not deployed::CLOUDFLARE_API_TOKEN is not set, so the worker was not deployed. Add it in Settings > Secrets and variables > Actions, or keep deploying cloudflare-worker/cors-proxy.js by hand."
+          else
+            echo "has_token=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The worker's own tests run here too: it is the only route the browser has to CMS, and a
+      # broken one takes out owner search silently.
+      - name: Test the worker before deploying it
+        if: steps.gate.outputs.has_token == 'true'
+        run: |
+          npm ci
+          npx vitest run cloudflare-worker/
+
+      - name: Deploy
+        if: steps.gate.outputs.has_token == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: cloudflare-worker
+        # Pinned rather than added to package.json: this is the only thing that needs wrangler,
+        # and putting it in the project's dependencies would slow every other install.
+        run: npx --yes wrangler@4.160.0 deploy
+
+      - name: Confirm the deployed worker still relays CMS
+        if: steps.gate.outputs.has_token == 'true'
+        # Worker checks only: a stale roster is a real problem but not this deploy's fault.
+        env:
+          HEALTH_ONLY: worker
+        run: |
+          echo "Waiting briefly for the new version to propagate..."
+          sleep 15
+          node scripts/health/check.mjs
