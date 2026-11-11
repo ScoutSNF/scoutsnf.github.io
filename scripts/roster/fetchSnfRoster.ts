@@ -54,6 +54,29 @@ export async function fetchSnfRecords(onRetry?: OnRetry): Promise<SnfRecord[]> {
     ]),
     county: findColumn(table, ['county_parish', 'provider_county_name', 'county_name', 'county']),
     ownership: findColumn(table, ['ownership_type']),
+    phone: findColumn(table, ['telephone_number', 'phone_number', 'provider_phone_number']),
+    legalName: findColumn(table, ['legal_business_name']),
+    chain: findColumn(table, ['chain_name']),
+    lsQm: findColumn(table, ['long_stay_qm_rating']),
+    ssQm: findColumn(table, ['short_stay_qm_rating']),
+    // Same adjusted-vs-reported distinction as `hprd` above: the adjusted figures are the ones CMS
+    // risk-adjusts for resident acuity, so they are the ones comparable between facilities. PT has
+    // no adjusted figure in the dataset, so the reported one is mapped and labelled as reported.
+    rnHprd: findColumn(table, ['adjusted_rn_staffing_hours_per_resident_per_day']),
+    lpnHprd: findColumn(table, ['adjusted_lpn_staffing_hours_per_resident_per_day']),
+    aideHprd: findColumn(table, ['adjusted_nurse_aide_staffing_hours_per_resident_per_day']),
+    weekendHprd: findColumn(table, ['adjusted_weekend_total_nurse_staffing_hours_per_resident_per_day']),
+    ptHprd: findColumn(table, ['reported_physical_therapist_staffing_hours_per_resident_per_day']),
+    nursingTurnover: findColumn(table, ['total_nursing_staff_turnover']),
+    rnTurnover: findColumn(table, ['registered_nurse_turnover']),
+    cmi: findColumn(table, ['nursing_case_mix_index']),
+    cmiRatio: findColumn(table, ['nursing_case_mix_index_ratio']),
+    survey1Date: findColumn(table, ['rating_cycle_1_standard_survey_health_date']),
+    survey1Defs: findColumn(table, ['rating_cycle_1_total_number_of_health_deficiencies']),
+    survey2Date: findColumn(table, ['rating_cycle_2_standard_health_survey_date']),
+    survey2Defs: findColumn(table, ['rating_cycle_2_3_total_number_of_health_deficiencies']),
+    weightedScore: findColumn(table, ['total_weighted_health_survey_score']),
+    fines: findColumn(table, ['total_amount_of_fines_in_dollars']),
     sff: findColumn(table, ['special_focus_status', 'special_focus_facility']),
     processingDate: findColumn(table, ['processing_date'])
   }
@@ -89,8 +112,28 @@ export async function fetchSnfRecords(onRetry?: OnRetry): Promise<SnfRecord[]> {
       ownershipType: col.ownership !== -1 ? row[col.ownership] || null : null,
       specialFocusStatus: col.sff !== -1 ? classifySpecialFocus(row[col.sff]) : null,
       specialFocusStatusRaw: col.sff !== -1 ? row[col.sff]?.trim() || null : null,
+      phoneNumber: col.phone !== -1 ? row[col.phone]?.trim() || null : null,
+      legalBusinessName: col.legalName !== -1 ? row[col.legalName]?.trim() || null : null,
+      chainName: col.chain !== -1 ? row[col.chain]?.trim() || null : null,
+      longStayQmRating: col.lsQm !== -1 ? parseNum(row[col.lsQm]) : null,
+      shortStayQmRating: col.ssQm !== -1 ? parseNum(row[col.ssQm]) : null,
+      rnStaffingHprd: col.rnHprd !== -1 ? parseNum(row[col.rnHprd]) : null,
+      lpnStaffingHprd: col.lpnHprd !== -1 ? parseNum(row[col.lpnHprd]) : null,
+      aideStaffingHprd: col.aideHprd !== -1 ? parseNum(row[col.aideHprd]) : null,
+      weekendNurseStaffingHprd: col.weekendHprd !== -1 ? parseNum(row[col.weekendHprd]) : null,
+      ptStaffingHprd: col.ptHprd !== -1 ? parseNum(row[col.ptHprd]) : null,
+      nursingTurnoverPct: col.nursingTurnover !== -1 ? parseNum(row[col.nursingTurnover]) : null,
+      rnTurnoverPct: col.rnTurnover !== -1 ? parseNum(row[col.rnTurnover]) : null,
+      caseMixIndex: col.cmi !== -1 ? parseNum(row[col.cmi]) : null,
+      caseMixRatio: col.cmiRatio !== -1 ? parseNum(row[col.cmiRatio]) : null,
+      latestSurveyDate: col.survey1Date !== -1 ? row[col.survey1Date]?.trim() || null : null,
+      latestSurveyDeficiencies: col.survey1Defs !== -1 ? parseNum(row[col.survey1Defs]) : null,
+      priorSurveyDate: col.survey2Date !== -1 ? row[col.survey2Date]?.trim() || null : null,
+      priorSurveyDeficiencies: col.survey2Defs !== -1 ? parseNum(row[col.survey2Defs]) : null,
+      weightedSurveyScore: col.weightedScore !== -1 ? parseNum(row[col.weightedScore]) : null,
+      totalFinesAmount: col.fines !== -1 ? parseNum(row[col.fines]) : null,
       processingDate: col.processingDate !== -1 ? row[col.processingDate] || null : null
     })
   }
   return records
-}
+      }
