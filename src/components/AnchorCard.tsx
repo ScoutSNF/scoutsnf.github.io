@@ -8,9 +8,14 @@ import { BookmarkIcon } from './BookmarkIcon'
 import { InfoPopover } from './InfoPopover'
 import type { LegendKey } from '../lib/legend'
 import { titleCaseName, getOccupancyDisplay, getBedsDisplay, formatDate } from '../lib/facilityDisplay'
-import { useOwnership } from '../hooks/useOwnership'
+
+/** CMS stores the phone as ten bare digits; render it as a number a person can dial from the page. */
+function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  return raw
+}
 import { useLazyPlaceInfo } from '../hooks/useLazyPlaceInfo'
-import { OwnershipDropdown } from './OwnershipDropdown'
 import { CopyLinkButton } from './CopyLinkButton'
 import { googleSearchUrl } from '../lib/facilityDisplay'
 
@@ -107,6 +112,15 @@ export function AnchorCard({
         ) : (
           <Metric label="Emergency services" legendKey="hospital-emergency" value={facility.emergencyServices ? 'Yes' : facility.emergencyServices === false ? 'No' : 'N/A'} />
         )}
+        {facility.kind === 'snf' && facility.phoneNumber && <Metric label="Phone" value={formatPhone(facility.phoneNumber)} />}
+        {facility.kind === 'snf' && facility.legalBusinessName && facility.legalBusinessName.toUpperCase() !== facility.name.toUpperCase() && (
+          <Metric label="Legal business name" value={titleCaseName(facility.legalBusinessName)} />
+        )}
+        {/* chainName is undefined on rosters cached before the field was mapped -- that means
+            "unknown", not "no chain", so the metric hides until a current roster loads. */}
+        {facility.kind === 'snf' && facility.chainName !== undefined && (
+          <Metric label="Chain" value={facility.chainName ? titleCaseName(facility.chainName) : 'Not in a chain'} />
+        )}
       </div>
 
       {facility.kind === 'snf' && (
@@ -120,6 +134,16 @@ export function AnchorCard({
           <span className="inline-flex items-center gap-1.5">
             Quality measures <StarRating rating={facility.qualityMeasureRating} />
           </span>
+          {facility.longStayQmRating != null && (
+            <span className="inline-flex items-center gap-1.5">
+              Long-stay QM <StarRating rating={facility.longStayQmRating} />
+            </span>
+          )}
+          {facility.shortStayQmRating != null && (
+            <span className="inline-flex items-center gap-1.5">
+              Short-stay QM <StarRating rating={facility.shortStayQmRating} />
+            </span>
+          )}
           <InfoPopover legendKey="snf-sub-ratings" />
         </div>
       )}
@@ -132,20 +156,6 @@ export function AnchorCard({
       )}
     </div>
   )
-}
-
-/** The ownership roster, lifted out of the card so it can live under its own detail tab. */
-export function OwnershipSection({ facility }: { facility: FacilityRecord }) {
-  const { records, loading, error } = useOwnership(facility.ccn, facility.kind === 'snf')
-  if (facility.kind !== 'snf') {
-    return (
-      <p className="text-sm text-[--color-text-secondary]">
-        CMS publishes owner and managing-party disclosures for skilled nursing facilities only. Unavailable in this
-        dataset for hospitals.
-      </p>
-    )
-  }
-  return <OwnershipDropdown records={records} loading={loading} error={error} />
 }
 
 function Metric({
@@ -169,4 +179,4 @@ function Metric({
       {sub && <div className="text-[10px] text-amber-600 dark:text-amber-400">{sub}</div>}
     </div>
   )
-}
+        }
