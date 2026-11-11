@@ -32,9 +32,15 @@ const NMRC_CSV = [
   '2001,S300001,00100,00700,30000',
   '2001,S300001,00100,00500,18000',
   '2001,S300001,00100,00600,9000',
-  '2001,G300000,00300,00100,20000000',
-  '2001,G300000,00400,00100,18000000',
-  '2001,G300000,00100,00100,17500000',
+  '2001,G300000,00100,00100,20000000',
+  '2001,G300000,00200,00100,2000000',
+  '2001,G300000,00300,00100,18000000',
+  '2001,G300000,00400,00100,17500000',
+  '2001,G300000,00500,00100,500000',
+  '2001,G300000,03100,00100,500000',
+  '2001,G000000,03400,00100,30000000',
+  '2001,G000000,05100,00100,25000000',
+  '2001,G000000,05200,00100,5000000',
   // Facility 145002 (rpt 2002) -- medicarePatientDays deliberately absurd (a mis-mapped cell should
   // never silently pass through as real data).
   '2002,S300001,00100,00100,80',
@@ -42,10 +48,15 @@ const NMRC_CSV = [
   '2002,S300001,00100,00700,25000',
   '2002,S300001,00100,00500,10000',
   '2002,S300001,00100,00600,99999999',
-  '2002,G300000,00300,00100,10000000',
-  '2002,G300000,00400,00100,9000000',
-  '2002,G300000,00100,00100,8800000'
+  '2002,G300000,00100,00100,10000000',
+  '2002,G300000,00200,00100,1000000',
+  '2002,G300000,00300,00100,9000000',
+  '2002,G300000,00400,00100,8800000',
+  '2002,G300000,00500,00100,200000',
+  '2002,G300000,03100,00100,200000'
 ].join('\n')
+
+const ALPHA_CSV = ['2001,G300000,02700,00000,PROVISION FOR INCOME TAXES'].join('\n')
 
 let server: Server
 let baseUrl: string
@@ -56,10 +67,10 @@ beforeAll(async () => {
   sourceDir = await mkdtemp(path.join(tmpdir(), 'hcris-src-'))
   await writeFile(path.join(sourceDir, 'SNF10_2025_RPT.CSV'), RPT_CSV, 'utf8')
   await writeFile(path.join(sourceDir, 'SNF10_2025_NMRC.CSV'), NMRC_CSV, 'utf8')
-  await writeFile(path.join(sourceDir, 'SNF10_2025_ALPHNMRC.CSV'), '', 'utf8')
+  await writeFile(path.join(sourceDir, 'SNF10_2025_ALPHA.CSV'), ALPHA_CSV, 'utf8')
 
   const zipPath = path.join(sourceDir, 'SNF10FY2025.zip')
-  await execFileAsync('zip', ['-j', '-q', zipPath, path.join(sourceDir, 'SNF10_2025_RPT.CSV'), path.join(sourceDir, 'SNF10_2025_NMRC.CSV'), path.join(sourceDir, 'SNF10_2025_ALPHNMRC.CSV')])
+  await execFileAsync('zip', ['-j', '-q', zipPath, path.join(sourceDir, 'SNF10_2025_RPT.CSV'), path.join(sourceDir, 'SNF10_2025_NMRC.CSV'), path.join(sourceDir, 'SNF10_2025_ALPHA.CSV')])
 
   server = createServer(async (_req, res) => {
     const { readFile } = await import('node:fs/promises')
@@ -93,10 +104,16 @@ describe('processFiscalYear (integration)', () => {
     expect(clean.occupancyPct).toBeCloseTo((30000 / 43800) * 100, 1)
     expect(clean.medicarePct).toBeCloseTo((9000 / 30000) * 100, 1)
     expect(clean.medicaidPct).toBeCloseTo((18000 / 30000) * 100, 1)
-    // Net income is derived (totalPatientRevenue - totalOperatingExpenses): 20,000,000 - 17,500,000.
-    expect(clean.netIncome).toBe(2_500_000)
-    expect(clean.operatingMarginPct).toBeCloseTo((2_500_000 / 20_000_000) * 100, 1)
+    // Net income is the filed Worksheet G-3 line 31; margin is patient-services margin
+    // (line 5 over line 3, net patient revenue): 500,000 / 18,000,000.
+    expect(clean.netIncome).toBe(500_000)
+    expect(clean.netIncomeFromService).toBe(500_000)
+    expect(clean.operatingMarginPct).toBeCloseTo((500_000 / 18_000_000) * 100, 1)
     expect(clean.reportStatusLabel).toBe('As submitted')
+    // Balance sheet: assets = liabilities + fund balance, so the trio survives.
+    expect(clean.totalAssets).toBe(30_000_000)
+    expect(clean.totalLiabilities).toBe(25_000_000)
+    expect(clean.fundBalance).toBe(5_000_000)
 
     const bad = records.find((r) => r.ccn === '145002')!
     expect(bad.medicarePct).toBeNull() // the absurd medicare value must not survive

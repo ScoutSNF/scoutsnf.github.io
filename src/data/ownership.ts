@@ -31,6 +31,7 @@ export interface OwnerSearchHit {
   ownerName: string
   role: string
   percentage: string
+  associationDate: string
 }
 
 /**
@@ -46,8 +47,52 @@ export async function searchOwnersByName(term: string): Promise<OwnerSearchHit[]
     ccn: r.cms_certification_number_ccn ?? '',
     ownerName: r.owner_name ?? '',
     role: r.role_played_by_owner_or_manager_in_facility ?? '',
-    percentage: r.ownership_percentage ?? ''
+    percentage: r.ownership_percentage ?? '',
+    associationDate: r.association_date ?? ''
   }))
+}
+
+/** Normalized for exact-name matching: case, surrounding whitespace and internal spacing ignored. */
+export function normalizeOwnerName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toUpperCase()
+}
+
+/**
+ * Full paged national search across the CMS Ownership dataset by owner/manager name (substring),
+ * returning every matching row, not a capped page. Used by the owner-search results view, where
+ * a capped return would silently hide matches. Paged at 500 rows (the datastore query API's
+ * accepted page size), with a safety cap so a pathological term cannot loop forever.
+ */
+export async function searchOwnersByNameAll(term: string): Promise<OwnerSearchHit[]> {
+  const all: OwnerSearchHit[] = []
+  const pageSize = 500
+  let offset = 0
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const params = new URLSearchParams({
+      limit: String(pageSize),
+      offset: String(offset),
+      'conditions[0][property]': 'owner_name',
+      'conditions[0][value]': `%${term}%`,
+      'conditions[0][operator]': 'LIKE'
+    })
+    const res = await fetchWithRetry(`${CMS_DATASTORE_QUERY_URL(CMS_OWNERSHIP_DATASET_ID)}?${params.toString()}`, 'Owner search', undefined, {
+      attempts: 2
+    })
+    const json = (await res.json()) as { results?: Record<string, string>[] }
+    const page = (json.results ?? []).map((r) => ({
+      ccn: r.cms_certification_number_ccn ?? '',
+      ownerName: r.owner_name ?? '',
+      role: r.role_played_by_owner_or_manager_in_facility ?? '',
+      percentage: r.ownership_percentage ?? '',
+      associationDate: r.association_date ?? ''
+    }))
+    all.push(...page)
+    if (page.length < pageSize) break
+    if (all.length >= 10_000) throw new Error('Owner search is too broad. Enter a more specific name.')
+    offset += page.length
+  }
+  return all
 }
 
 /**

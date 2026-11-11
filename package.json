@@ -10,7 +10,8 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "hcris:run": "tsx scripts/hcris/run.ts",
-    "roster:run": "tsx scripts/roster/run.ts"
+    "roster:run": "tsx scripts/roster/run.ts",
+    "chow:run": "tsx scripts/chow/run.ts"
   },
   "dependencies": {
     "dexie": "^4.0.10",

@@ -15,12 +15,15 @@ export function SearchBar({
   snfs,
   hospitals,
   onSelect,
+  onOwnerSearch,
   dataReady = true,
   loadError = null
 }: {
   snfs: SnfRecord[]
   hospitals: HospitalRecord[]
   onSelect: (facility: FacilityRecord) => void
+  /** Opens the full owner-search results view (every matching facility, not a capped suggestion list). */
+  onOwnerSearch?: (term: string) => void
   /** True once the roster has loaded, so "no matches" can be told apart from "no data yet". */
   dataReady?: boolean
   /** Set when the roster could not be fetched, so a failure is not reported as an empty result. */
@@ -454,6 +457,23 @@ export function SearchBar({
                   </button>
                 </li>
               ))}
+              {/* The dropdown is a capped suggestion list; the full return is its own view. */}
+              {!ownerLoading && !ownerError && onOwnerSearch && (
+                <li className="border-t border-slate-200 dark:border-slate-700">
+                  <button
+                    className="w-full px-4 py-2 text-left text-xs font-medium text-[--color-brand-strong] hover:bg-slate-100 dark:hover:bg-slate-800"
+                    onMouseDown={() => {
+                      // The results view replaces the dropdown as the thing being looked at --
+                      // leaving the panel open would cover it.
+                      setFocused(false)
+                      setFiltersOpen(false)
+                      onOwnerSearch(ownerQuery.trim())
+                    }}
+                  >
+                    Full results for “{ownerQuery.trim()}” →
+                  </button>
+                </li>
+              )}
             </>
           )}
         </ul>

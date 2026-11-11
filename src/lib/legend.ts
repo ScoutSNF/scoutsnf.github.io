@@ -127,11 +127,11 @@ const ENTRIES: LegendEntry[] = [
   },
   {
     key: 'cost-report-margin',
-    stat: 'Operating margin',
+    stat: 'Patient services margin',
     source: 'CMS HCRIS cost reports',
     refresh: 'Quarterly',
     details:
-      '(Net patient revenue − total operating expenses) ÷ net patient revenue, from Worksheet G/G-2/G-3. Negative means the facility spent more on operations than it collected.',
+      'Net income from service to patients ÷ net patient revenue (Worksheet G-3 line 5 ÷ line 3) — the margin on patient care itself, before other income and taxes. Negative means the facility spent more on operations than it collected.',
     whenMissing:
       'Shown as N/A because this facility\u2019s filing is missing the revenue figures the ratio needs — commonly the case for reports filed as a group or with an incomplete Worksheet G. Expenses alone cannot produce a margin, so nothing is estimated.'
   },

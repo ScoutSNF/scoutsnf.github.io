@@ -12,12 +12,28 @@ function round1(n: number): number {
 }
 
 /**
+ * Case-mix-free display casing for a filer's ALL-CAPS "specify" label ("PROVISION FOR INCOME
+ * TAXES" -> "Provision for income taxes"). Acronyms are not restored -- the label is the filer's
+ * own text, kept verbatim apart from casing.
+ */
+function titleCaseLabel(label: string): string {
+  return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()
+}
+
+/**
  * Turns one report's raw extracted cells into a validated FacilityYearRecord. Every field passes
  * its own plausibility range plus the cross-field relationship checks below; anything that fails is
  * dropped (set to null) and logged rather than trusted. A record missing a required metric is
  * dropped entirely.
+ *
+ * `alphaLabels` maps Worksheet G-3 line numbers ("02700".."03000") to the filer's itemized
+ * other-expenses labels for this report, when the ALPHA file was parsed.
  */
-export function buildFacilityYearRecord(rpt: RptRow, raw: RawMetricValues): BuildResult {
+export function buildFacilityYearRecord(
+  rpt: RptRow,
+  raw: RawMetricValues,
+  alphaLabels?: Map<string, string>
+): BuildResult {
   const warnings: string[] = []
   const ctx = `${rpt.prvdrNum} FY${rpt.fyBeginDate}`
 
@@ -48,8 +64,32 @@ export function buildFacilityYearRecord(rpt: RptRow, raw: RawMetricValues): Buil
   let medicarePatientDays = inRange('medicarePatientDays')
   let medicaidPatientDays = inRange('medicaidPatientDays')
   let totalPatientRevenue = inRange('totalPatientRevenue')
+  let contractualAllowances = inRange('contractualAllowances')
   let netPatientRevenue = inRange('netPatientRevenue')
   let totalOperatingExpenses = inRange('totalOperatingExpenses')
+  let netIncomeFromService = inRange('netIncomeFromService')
+  const otherIncome = inRange('otherIncome')
+  const totalIncome = inRange('totalIncome')
+  const netIncome = inRange('netIncome')
+  const cash = inRange('cash')
+  const accountsReceivable = inRange('accountsReceivable')
+  const totalCurrentAssets = inRange('totalCurrentAssets')
+  let totalAssets = inRange('totalAssets')
+  const accountsPayable = inRange('accountsPayable')
+  const totalCurrentLiabilities = inRange('totalCurrentLiabilities')
+  const totalLongTermLiabilities = inRange('totalLongTermLiabilities')
+  let totalLiabilities = inRange('totalLiabilities')
+  let fundBalance = inRange('fundBalance')
+
+  // Itemized other-expenses lines (G-3 lines 27-30) with the filer's own ALPHA labels.
+  const otherExpenseLines = (['02700', '02800', '02900', '03000'] as const)
+    .map((lineNum, i) => ({
+      value: inRange(`otherExpense${27 + i}`),
+      label: alphaLabels?.get(lineNum)
+    }))
+    .filter((l) => l.value != null && l.value !== 0)
+  const otherExpenses = otherExpenseLines.length > 0 ? otherExpenseLines.reduce((sum, l) => sum + l.value!, 0) : null
+  const otherExpensesLabels = otherExpenseLines.map((l) => (l.label ? titleCaseLabel(l.label) : 'Other expenses'))
 
   // Bed-days available should roughly bound total patient days -- a report period is usually ~365
   // days, so this also catches a bedDaysAvailable cell pointed at the wrong line.
@@ -75,10 +115,53 @@ export function buildFacilityYearRecord(rpt: RptRow, raw: RawMetricValues): Buil
     netPatientRevenue = null
   }
 
-  // Net income = total patient revenue minus total operating expenses -- verified as an exact
-  // accounting identity (Worksheet G-3 line 2, negated) against every report in a real HCRIS file,
-  // so it's derived here rather than read from its own raw cell.
-  const netIncome = totalPatientRevenue != null && totalOperatingExpenses != null ? totalPatientRevenue - totalOperatingExpenses : null
+  // Net patient revenue = total patient revenue minus contractual allowances, exactly, on the
+  // filed form. A 1% tolerance absorbs rounding on odd report periods; a bigger gap means one of
+  // the three cells is not what its coordinate claims, so the deduction line is the one dropped.
+  if (totalPatientRevenue != null && netPatientRevenue != null && contractualAllowances != null) {
+    const expected = totalPatientRevenue - contractualAllowances
+    if (Math.abs(expected - netPatientRevenue) > Math.max(1000, totalPatientRevenue * 0.01)) {
+      warnings.push(
+        `${ctx}: contractualAllowances (${contractualAllowances}) inconsistent with total (${totalPatientRevenue}) and net (${netPatientRevenue}) patient revenue -- allowances dropped`
+      )
+      contractualAllowances = null
+    }
+  }
+
+  // Net income from service = net patient revenue minus total operating expenses, exactly.
+  if (netPatientRevenue != null && totalOperatingExpenses != null && netIncomeFromService != null) {
+    const expected = netPatientRevenue - totalOperatingExpenses
+    if (Math.abs(expected - netIncomeFromService) > Math.max(1000, netPatientRevenue * 0.01)) {
+      warnings.push(
+        `${ctx}: netIncomeFromService (${netIncomeFromService}) inconsistent with net revenue (${netPatientRevenue}) minus expenses (${totalOperatingExpenses}) -- netIncomeFromService dropped`
+      )
+      netIncomeFromService = null
+    }
+  }
+
+  // Total income = net income from service + other income; net income = total income - other
+  // expenses. Checked when all sides are present; a mismatch flags in the log but keeps the
+  // filed lines (the itemized block can omit lines a filer left blank on the form).
+  if (netIncome != null && totalIncome != null && otherExpenses != null) {
+    const expected = totalIncome - otherExpenses
+    if (Math.abs(expected - netIncome) > Math.max(1000, Math.abs(totalIncome) * 0.01)) {
+      warnings.push(`${ctx}: netIncome (${netIncome}) != totalIncome (${totalIncome}) - otherExpenses (${otherExpenses})`)
+    }
+  }
+
+  // Total assets = total liabilities + fund balance, exactly, on the balance sheet. A real break
+  // of that identity means one of the three cells is misread, so the trio is dropped together.
+  if (totalAssets != null && totalLiabilities != null && fundBalance != null) {
+    const expected = totalLiabilities + fundBalance
+    if (Math.abs(expected - totalAssets) > Math.max(1000, totalAssets * 0.01)) {
+      warnings.push(
+        `${ctx}: totalAssets (${totalAssets}) != totalLiabilities (${totalLiabilities}) + fundBalance (${fundBalance}) -- balance-sheet totals dropped`
+      )
+      totalAssets = null
+      totalLiabilities = null
+      fundBalance = null
+    }
+  }
 
   const occupancyPct = bedDaysAvailable && bedDaysAvailable > 0 ? round1((totalPatientDays / bedDaysAvailable) * 100) : null
   if (occupancyPct != null && (occupancyPct < 0 || occupancyPct > 110)) {
@@ -91,8 +174,13 @@ export function buildFacilityYearRecord(rpt: RptRow, raw: RawMetricValues): Buil
   const payerPct = (days: number | null): number | null =>
     days != null && totalPatientDays > 0 ? round1((days / totalPatientDays) * 100) : null
 
+  // Patient-services margin: net income from service to patients as a share of net patient
+  // revenue (Worksheet G-3 line 5 over line 3). This is the margin on patient care itself,
+  // before other income and taxes.
   const operatingMarginPct =
-    netIncome != null && totalPatientRevenue && totalPatientRevenue > 0 ? round1((netIncome / totalPatientRevenue) * 100) : null
+    netIncomeFromService != null && netPatientRevenue && netPatientRevenue > 0
+      ? round1((netIncomeFromService / netPatientRevenue) * 100)
+      : null
 
   const record: FacilityYearRecord = {
     ccn: rpt.prvdrNum,
@@ -102,6 +190,7 @@ export function buildFacilityYearRecord(rpt: RptRow, raw: RawMetricValues): Buil
     reportStatusLabel: REPORT_STATUS_LABELS[rpt.rptStatusCode] ?? 'Unknown',
     processDate: rpt.processDate,
     bedsAvailable,
+    bedDaysAvailable,
     totalPatientDays,
     medicarePatientDays,
     medicaidPatientDays,
@@ -111,10 +200,25 @@ export function buildFacilityYearRecord(rpt: RptRow, raw: RawMetricValues): Buil
     medicaidPct: payerPct(medicaidPatientDays),
     otherPct: payerPct(otherPatientDays),
     totalPatientRevenue,
+    contractualAllowances,
     netPatientRevenue,
     totalOperatingExpenses,
+    netIncomeFromService,
+    otherIncome,
+    totalIncome,
+    otherExpenses,
+    otherExpensesLabels,
     netIncome,
-    operatingMarginPct
+    operatingMarginPct,
+    cash,
+    accountsReceivable,
+    totalCurrentAssets,
+    totalAssets,
+    accountsPayable,
+    totalCurrentLiabilities,
+    totalLongTermLiabilities,
+    totalLiabilities,
+    fundBalance
   }
 
   return { record, warnings }

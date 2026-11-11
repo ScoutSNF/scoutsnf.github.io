@@ -275,7 +275,7 @@ export function CostReportCard({ records, kind }: { records: FacilityYearRecord[
         {kind === 'snf' && (
           <>
             <StatTile
-              label="Operating margin"
+              label="Patient services margin"
               legendKey="cost-report-margin"
               value={latest.operatingMarginPct != null ? `${latest.operatingMarginPct}%` : 'N/A'}
               delta={marginDelta}
@@ -316,7 +316,7 @@ export function CostReportCard({ records, kind }: { records: FacilityYearRecord[
             {kind === 'snf' && trendRecords.filter((r) => r.operatingMarginPct != null).length >= 2 && (
               <div className="rounded-lg border border-slate-200 p-2.5 dark:border-slate-800">
                 <div className="mb-0.5 flex items-baseline justify-between">
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Operating margin</span>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Patient services margin</span>
                   <span className={`text-xs font-bold ${latest.operatingMarginPct != null && latest.operatingMarginPct < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
                     {latest.operatingMarginPct}%
                   </span>

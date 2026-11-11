@@ -23,8 +23,11 @@ describe('buildFacilityYearRecord', () => {
       medicarePatientDays: 7008,
       medicaidPatientDays: 18688,
       totalPatientRevenue: 15_000_000,
+      contractualAllowances: 1_500_000,
       netPatientRevenue: 13_500_000,
-      totalOperatingExpenses: 13_680_000
+      totalOperatingExpenses: 13_680_000,
+      netIncomeFromService: -180_000,
+      netIncome: -180_000
     })
 
     expect(warnings).toEqual([])
@@ -34,9 +37,10 @@ describe('buildFacilityYearRecord', () => {
     expect(record!.medicaidPct).toBe(64)
     expect(record!.otherPct).toBe(12)
     expect(record!.otherPatientDays).toBe(29200 - 7008 - 18688)
-    // Net income is derived (totalPatientRevenue - totalOperatingExpenses), not read from its own cell.
-    expect(record!.netIncome).toBe(15_000_000 - 13_680_000)
-    expect(record!.operatingMarginPct).toBeCloseTo(((15_000_000 - 13_680_000) / 15_000_000) * 100, 1)
+    // Net income is read from the filed Worksheet G-3 line 31 cell, not derived.
+    expect(record!.netIncome).toBe(-180_000)
+    // Margin is patient-services margin: line 5 over line 3 (net patient revenue).
+    expect(record!.operatingMarginPct).toBeCloseTo((-180_000 / 13_500_000) * 100, 1)
     expect(record!.reportStatusLabel).toBe('As submitted')
   })
 
@@ -81,22 +85,71 @@ describe('buildFacilityYearRecord', () => {
     expect(warnings.some((w) => w.includes('bedDaysAvailable'))).toBe(true)
   })
 
-  it('leaves net income null when either input to the derivation is missing', () => {
+  it('leaves margin null when its inputs are missing, without touching filed net income', () => {
     const { record } = buildFacilityYearRecord(rpt(), {
       bedsAvailable: 100,
       totalPatientDays: 29200,
-      totalOperatingExpenses: 1_000_000
-      // totalPatientRevenue never extracted for this report
+      totalOperatingExpenses: 1_000_000,
+      netIncome: 42_000
+      // netPatientRevenue / netIncomeFromService never extracted for this report
     })
     expect(record).not.toBeNull()
-    expect(record!.netIncome).toBeNull()
+    expect(record!.netIncome).toBe(42_000)
     expect(record!.operatingMarginPct).toBeNull()
   })
 
   it('leaves financial fields null (not zero) when never extracted', () => {
     const { record } = buildFacilityYearRecord(rpt(), { bedsAvailable: 100, totalPatientDays: 29200 })
     expect(record!.totalPatientRevenue).toBeNull()
+    expect(record!.contractualAllowances).toBeNull()
     expect(record!.netIncome).toBeNull()
     expect(record!.operatingMarginPct).toBeNull()
+    expect(record!.otherExpensesLabels).toEqual([])
+    expect(record!.totalAssets).toBeNull()
+  })
+
+  it('sums the itemized other-expenses lines and keeps the filer labels', () => {
+    const { record, warnings } = buildFacilityYearRecord(
+      rpt(),
+      {
+        bedsAvailable: 100,
+        totalPatientDays: 29200,
+        totalIncome: 500_000,
+        netIncome: 192_879,
+        otherExpense27: 307_121,
+        otherExpense29: 0
+      },
+      new Map([['02700', 'PROVISION FOR INCOME TAXES']])
+    )
+    expect(warnings).toEqual([])
+    expect(record!.otherExpenses).toBe(307_121)
+    expect(record!.otherExpensesLabels).toEqual(['Provision for income taxes'])
+  })
+
+  it('drops the balance-sheet trio when assets != liabilities + equity', () => {
+    const { record, warnings } = buildFacilityYearRecord(rpt(), {
+      bedsAvailable: 100,
+      totalPatientDays: 29200,
+      totalAssets: 10_000_000,
+      totalLiabilities: 4_000_000,
+      fundBalance: 1_000_000 // 4M + 1M != 10M: a mis-mapped cell somewhere
+    })
+    expect(record!.totalAssets).toBeNull()
+    expect(record!.totalLiabilities).toBeNull()
+    expect(record!.fundBalance).toBeNull()
+    expect(warnings.some((w) => w.includes('balance-sheet totals dropped'))).toBe(true)
+  })
+
+  it('keeps the balance-sheet trio when the identity holds', () => {
+    const { record, warnings } = buildFacilityYearRecord(rpt(), {
+      bedsAvailable: 100,
+      totalPatientDays: 29200,
+      totalAssets: 40_669_467,
+      totalLiabilities: 35_097_143,
+      fundBalance: 5_572_324
+    })
+    expect(warnings).toEqual([])
+    expect(record!.totalAssets).toBe(40_669_467)
+    expect(record!.fundBalance).toBe(5_572_324)
   })
 })

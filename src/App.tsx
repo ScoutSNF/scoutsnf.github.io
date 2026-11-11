@@ -30,7 +30,11 @@ import type { SavedFacilityRow } from './data/db'
 import { withinRadius } from './lib/market'
 import { resolvePortfolioMembers, buildPortfolioReport } from './lib/portfolioReport'
 import { SearchBar } from './components/SearchBar'
-import { AnchorCard, OwnershipSection } from './components/AnchorCard'
+import { AnchorCard } from './components/AnchorCard'
+import { OwnershipTab } from './components/OwnershipTab'
+import { OwnerSearchResults } from './components/OwnerSearchResults'
+import { StaffingDetailCard, SurveysCard } from './components/QualityCards'
+import { FinancialStatements } from './components/FinancialStatements'
 import { DetailTabs } from './components/DetailTabs'
 import { CompareTray } from './components/CompareTray'
 import { CommandMenu, MOD_KEY } from './components/CommandMenu'
@@ -121,6 +125,10 @@ export default function App() {
   const [boardOpen, setBoardOpen] = useState(false)
 
   const [recents, setRecents] = useState<RecentFacility[]>(() => readRecents())
+
+  /** Set when the owner-search results view is open -- the full return for an owner name, as
+   * opposed to the capped suggestion dropdown inside Filters. */
+  const [ownerSearchTerm, setOwnerSearchTerm] = useState<string | null>(null)
 
   const [anchor, setAnchor] = useState<FacilityRecord | null>(null)
   /** Where to return when the back link is used: 'plain' = ScoutBoard's top-level list, a portfolio
@@ -606,9 +614,24 @@ export default function App() {
                 setReturnTarget(null)
                 openFacility(facility)
               }}
+              onOwnerSearch={(term) => setOwnerSearchTerm(term)}
             />
 
-            {!anchor && (
+            {ownerSearchTerm && (
+              <OwnerSearchResults
+                query={ownerSearchTerm}
+                snfs={snfs}
+                anchor={anchor}
+                onOpen={(facility) => {
+                  setOwnerSearchTerm(null)
+                  setReturnTarget(null)
+                  openFacility(facility)
+                }}
+                onClose={() => setOwnerSearchTerm(null)}
+              />
+            )}
+
+            {!anchor && !ownerSearchTerm && (
               <SearchEmptyState
                 recents={recents}
                 onOpenRecent={(r) => {
@@ -672,6 +695,8 @@ export default function App() {
                               radiusMiles={radiusMiles}
                             />
                           )}
+                          {anchor.kind === 'snf' && <StaffingDetailCard facility={anchor} />}
+                          {anchor.kind === 'snf' && <SurveysCard facility={anchor} />}
                         </div>
                       )
                     },
@@ -686,13 +711,16 @@ export default function App() {
                             absence in the source data, not a zero.
                           </p>
                         ) : (
-                          <CostReportCard records={costReportsByCcn.get(anchor.ccn) ?? []} kind={anchor.kind} />
+                          <>
+                            <CostReportCard records={costReportsByCcn.get(anchor.ccn) ?? []} kind={anchor.kind} />
+                            <FinancialStatements records={costReportsByCcn.get(anchor.ccn) ?? []} />
+                          </>
                         )
                     },
                     {
                       id: 'ownership',
                       label: 'Ownership',
-                      content: <OwnershipSection facility={anchor} />
+                      content: <OwnershipTab facility={anchor} snfs={snfs} />
                     }
                   ]}
                 />
@@ -906,4 +934,4 @@ export default function App() {
       <MobileNav {...navProps} />
     </div>
   )
-}
+                }
