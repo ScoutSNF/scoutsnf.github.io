@@ -1,5 +1,5 @@
 import type { OwnershipRecord } from '../data/ownership'
-import { formatRole } from '../lib/ownershipDisplay'
+import { formatRole, bareAssociationDate } from '../lib/ownershipDisplay'
 
 type Tier = 'direct' | 'indirect' | 'other'
 
@@ -39,6 +39,9 @@ function OwnerRow({ record }: { record: OwnershipRecord }) {
       <span className="min-w-0">
         <span className="block text-slate-700 dark:text-slate-200">{record.ownerName}</span>
         {record.role && <span className="block text-[10px] text-slate-500 dark:text-slate-400">{formatRole(record.role)}</span>}
+        {record.associationDate && (
+          <span className="block text-[10px] text-slate-500 dark:text-slate-400">Associated since {bareAssociationDate(record.associationDate)}</span>
+        )}
       </span>
       <span className="shrink-0 tabular-nums">{pct}</span>
     </div>
