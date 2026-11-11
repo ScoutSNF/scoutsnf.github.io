@@ -6,6 +6,7 @@ import { findRecentSnfZipLinks } from './scrape.js'
 import { downloadToFile, extractZip, findExtractedFile } from './download.js'
 import { parseRpt } from './parseRpt.js'
 import { parseNmrcStream } from './parseNmrc.js'
+import { parseAlphaOtherExpenseLabels } from './parseAlpha.js'
 import { buildFacilityYearRecord } from './buildRecord.js'
 import { upsertRecords, groupByCcn } from './upsert.js'
 import { METRIC_CATALOG } from './metricCatalog.js'
@@ -25,6 +26,7 @@ export async function processFiscalYear(fy: number, zipUrl: string, workDir: str
 
   const rptFile = findExtractedFile(files, '_RPT.CSV') ?? findExtractedFile(files, 'RPT.CSV')
   const nmrcFile = findExtractedFile(files, '_NMRC.CSV') ?? findExtractedFile(files, 'NMRC.CSV')
+  const alphaFile = findExtractedFile(files, '_ALPHA.CSV') ?? findExtractedFile(files, 'ALPHA.CSV')
   if (!rptFile || !nmrcFile) {
     throw new Error(`FY${fy}: could not find RPT/NMRC files among: ${files.join(', ')}`)
   }
@@ -36,11 +38,16 @@ export async function processFiscalYear(fy: number, zipUrl: string, workDir: str
   const metricValues = await parseNmrcStream(path.join(extractDir, nmrcFile), METRIC_CATALOG)
   console.log(`FY${fy}: matched NMRC cells for ${metricValues.size} report(s)`)
 
+  // Filer labels for the itemized other-expenses lines; optional -- a missing ALPHA file costs
+  // the labels, never the numbers.
+  const alphaLabels = alphaFile ? await parseAlphaOtherExpenseLabels(path.join(extractDir, alphaFile)) : new Map<string, Map<string, string>>()
+  console.log(`FY${fy}: matched ALPHA other-expense labels for ${alphaLabels.size} report(s)`)
+
   const records: FacilityYearRecord[] = []
   const warnings: string[] = []
   for (const rpt of rptRows.values()) {
     const raw = metricValues.get(rpt.rptRecNum) ?? {}
-    const { record, warnings: recordWarnings } = buildFacilityYearRecord(rpt, raw)
+    const { record, warnings: recordWarnings } = buildFacilityYearRecord(rpt, raw, alphaLabels.get(rpt.rptRecNum))
     warnings.push(...recordWarnings)
     if (record) records.push(record)
   }
@@ -105,4 +112,4 @@ if (isMain) {
     console.error('HCRIS pipeline failed:', err)
     process.exitCode = 1
   })
-}
+  }
