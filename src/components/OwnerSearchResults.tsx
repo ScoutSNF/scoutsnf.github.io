@@ -9,6 +9,7 @@ interface FacilityMatch {
   ccn: string
   roles: string[]
   dates: string[]
+  disclosures: string[]
 }
 
 /**
@@ -52,20 +53,22 @@ export function OwnerSearchResults({
 
   const snfByCcn = useMemo(() => new Map(snfs.map((f) => [f.ccn, f])), [snfs])
 
-  const { exact, similarCount } = useMemo(() => {
-    if (hits == null) return { exact: [] as FacilityMatch[], similarCount: 0 }
+  const { exact, similarCount, exactQuery } = useMemo(() => {
+    if (hits == null) return { exact: [] as FacilityMatch[], similarCount: 0, exactQuery: false }
     const wanted = normalizeOwnerName(query)
-    const byFac = new Map<string, { roles: Set<string>; dates: Set<string> }>()
+    const exactQuery = hits.some((h) => normalizeOwnerName(h.ownerName) === wanted)
+    const byFac = new Map<string, { roles: Set<string>; dates: Set<string>; disclosures: Set<string> }>()
     let similar = 0
     const similarCcns = new Set<string>()
     for (const h of hits) {
       if (!h.ccn) continue
-      if (normalizeOwnerName(h.ownerName) !== wanted) {
+      if (exactQuery && normalizeOwnerName(h.ownerName) !== wanted) {
         if (!similarCcns.has(h.ccn)) similarCcns.add(h.ccn)
         continue
       }
-      if (!byFac.has(h.ccn)) byFac.set(h.ccn, { roles: new Set(), dates: new Set() })
+      if (!byFac.has(h.ccn)) byFac.set(h.ccn, { roles: new Set(), dates: new Set(), disclosures: new Set() })
       const entry = byFac.get(h.ccn)!
+      entry.disclosures.add([h.ownerName, h.role && formatRole(h.role), h.associationDate && `associated since ${bareAssociationDate(h.associationDate)}`].filter(Boolean).join(' · '))
       if (h.role) entry.roles.add(formatRole(h.role))
       if (h.associationDate) entry.dates.add(bareAssociationDate(h.associationDate))
     }
@@ -74,7 +77,8 @@ export function OwnerSearchResults({
       facility: snfByCcn.get(ccn) ?? null,
       ccn,
       roles: [...v.roles],
-      dates: [...v.dates].sort()
+      dates: [...v.dates].sort(),
+      disclosures: [...v.disclosures].sort()
     }))
     // The facility currently open comes first, then alphabetical by name -- the search usually
     // starts from the facility being viewed.
@@ -83,7 +87,7 @@ export function OwnerSearchResults({
       if (anchor && b.ccn === anchor.ccn) return 1
       return (a.facility?.name ?? a.ccn).localeCompare(b.facility?.name ?? b.ccn)
     })
-    return { exact: matches, similarCount: similar }
+    return { exact: matches, similarCount: similar, exactQuery }
   }, [hits, query, snfByCcn, anchor])
 
   return (
@@ -94,7 +98,9 @@ export function OwnerSearchResults({
             ? 'Owner search unavailable - try again'
             : hits == null
               ? `Searching for facilities listing “${query.trim()}”…`
-              : `${exact.length} ${exact.length === 1 ? 'facility lists' : 'facilities list'} the exact owner name “${normalizeOwnerName(query)}”`}
+              : exactQuery
+                ? `${exact.length} ${exact.length === 1 ? 'facility lists' : 'facilities list'} the exact owner name “${normalizeOwnerName(query)}”`
+                : `${exact.length} ${exact.length === 1 ? 'facility lists' : 'facilities list'} owner names matching “${query.trim()}”`}
         </h2>
         <button
           onClick={onClose}
@@ -124,21 +130,32 @@ export function OwnerSearchResults({
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
                     {m.facility ? `${m.facility.city}, ${m.facility.state}` : 'Not in the current roster'}
-                    {m.roles.length > 0 && ` · ${m.roles.join(', ')}`}
-                    {m.dates.length > 0 && ` · associated since ${m.dates.join(', ')}`}
+                    {exactQuery && m.roles.length > 0 && ` · ${m.roles.join(', ')}`}
+                    {exactQuery && m.dates.length > 0 && ` · associated since ${m.dates.join(', ')}`}
                   </span>
+                  {!exactQuery && m.disclosures.slice(0, 1).map((d) => (
+                    <span key={d} className="max-w-full break-words text-xs text-slate-500 dark:text-slate-400">CMS: {d}</span>
+                  ))}
                 </button>
+                {!exactQuery && m.disclosures.length > 1 && (
+                  <details className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+                    <summary className="cursor-pointer">{m.disclosures.length - 1} more matching CMS disclosures</summary>
+                    <div className="mt-1 flex flex-col gap-1">
+                      {m.disclosures.slice(1).map((d) => <p key={d} className="break-words">CMS: {d}</p>)}
+                    </div>
+                  </details>
+                )}
               </li>
             ))}
           </ul>
           {exact.length === 0 && (
-            <p className="mt-2 text-sm text-[--color-text-secondary]">No facility lists that exact owner name.</p>
+            <p className="mt-2 text-sm text-[--color-text-secondary]">No facility lists a matching owner name.</p>
           )}
           <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-            Each row opens that facility's view — portfolio context stays inside the facility. Matches are on the exact name string:
+            Each row opens that facility's view. Portfolio context stays inside the facility. {exactQuery ? 'Results use the exact name string.' : 'Results match owner-name text, not a confirmed person or organization.'} 
             CMS publishes no unique owner ID, so one person can appear under several name strings, one string can belong to different
             people, and roles differ by facility. Same-name matches are leads, not confirmed identity.
-            {similarCount > 0 &&
+            {exactQuery && similarCount > 0 &&
               ` ${similarCount} more ${similarCount === 1 ? 'facility lists' : 'facilities list'} a similar but not identical name — not shown.`}
           </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -148,4 +165,4 @@ export function OwnerSearchResults({
       )}
     </section>
   )
-}
+          }
