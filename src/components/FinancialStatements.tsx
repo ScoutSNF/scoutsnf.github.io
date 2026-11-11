@@ -65,7 +65,7 @@ function StatementTable({
                 <td className={`py-1 pr-2 text-left text-slate-600 dark:text-slate-300 ${row.indent ? 'pl-3' : ''}`}>{row.label}</td>
                 {row.values.map((v, i) => (
                   <td key={i} className="py-1 pl-2 tabular-nums text-slate-800 dark:text-slate-100">
-                    {row.negate && v != null && v !== 0 ? `-${money(-v)}`.replace('--', '-') : money(v)}
+                    {row.negate && v != null ? money(-v) : money(v)}
                   </td>
                 ))}
               </tr>
@@ -91,6 +91,8 @@ export function FinancialStatements({ records }: { records: FacilityYearRecord[]
   const shown = records.slice(-2).reverse()
   const years = shown.map((r) => `FY ${r.fyBeginDate.slice(0, 4)}`)
 
+  const expenseLabels = [...new Set(shown.flatMap((r) => r.otherExpensesLabels ?? []))]
+
   const incomeRows: Row[] = [
     { label: 'Total patient revenues', values: shown.map((r) => r.totalPatientRevenue) },
     { label: 'Less: contractual allowances & discounts', values: shown.map((r) => r.contractualAllowances), negate: true },
@@ -102,8 +104,8 @@ export function FinancialStatements({ records }: { records: FacilityYearRecord[]
     // The itemized other-expenses lines carry the filer's own labels; shown as one deduction line.
     {
       label:
-        shown.find((r) => (r.otherExpensesLabels?.length ?? 0) > 0)?.otherExpensesLabels?.length === 1
-          ? `Other expenses: ${shown.find((r) => (r.otherExpensesLabels?.length ?? 0) > 0)!.otherExpensesLabels[0].toLowerCase()}`
+        expenseLabels.length === 1
+          ? `Other expenses: ${expenseLabels[0].toLowerCase()}`
           : 'Other expenses',
       values: shown.map((r) => r.otherExpenses),
       negate: true
@@ -200,4 +202,4 @@ export function FinancialStatements({ records }: { records: FacilityYearRecord[]
       </p>
     </div>
   )
-     }
+}
